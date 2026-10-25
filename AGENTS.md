@@ -192,7 +192,9 @@ quoted: the file is passed to the containers as is, and `docker stack deploy` ke
 
 ## Git Worktrees
 
-In a linked worktree (e.g. `.claude/worktrees/<name>`, into which Claude Code copies the files listed in `.worktreeinclude`), every `uv run cli` command except `init-workspace` first gives the worktree a slot N in its `.env`: the host ports from `docker-compose.dev.yml` shifted by N × 100 (slot 1: web 8100, Postgres 5532, debugger 5778, receiver 11222, Orthancs 7601/7602) and `STACK_NAME=adit_wt<N>_<name>`, so it runs its own containers, volumes and database, with session cookies that don't log the main checkout out. Values changed by hand in the worktree's `.env` stay; `uv run cli worktree-env --slot N` picks another slot. Before deleting a worktree, run `uv run cli compose-down -- -v`. Details, including how slots avoid other projects' ports: adit-radis-shared's `adit_radis_shared/cli/worktree_env.py`.
+In a linked worktree (e.g. `.claude/worktrees/<name>`, into which Claude Code copies the files listed in `.worktreeinclude`), every `uv run cli` command except `init-workspace` first gives the worktree a slot N in its `.env`: the host ports from `docker-compose.dev.yml` shifted by N × 100 (slot 1: web 8100, Postgres 5532, debugger 5778, receiver 11222, Orthancs 7601/7602) and `STACK_NAME=adit_wt<N>_<name>`, so it runs its own containers, volumes and database, with session cookies that don't log the main checkout out. The first command picks the slot, skipping any whose ports are in use, and later commands keep it. Values changed by hand in the worktree's `.env` stay; `uv run cli worktree-env --slot N` picks another slot, and with it a new stack name, so an empty database. Before deleting a worktree, run `uv run cli compose-down -- -v`. Details: adit-radis-shared's `adit_radis_shared/cli/worktree_env.py`.
+
+If a stack fails because a host port is taken ("port is already allocated", "address already in use"), another program holds it: leave that program alone. Set a free port for that variable in this checkout's `.env`; in a worktree, later `uv run cli` commands keep it.
 
 ## Code Standards
 
