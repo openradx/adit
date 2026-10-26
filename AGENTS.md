@@ -157,10 +157,10 @@ Data modification pattern: download to temp folder -> transform (pseudonymize) -
 - **default_worker**: General background task processor (Procrastinate queue: `default`); each worker runs `sweep_stale_tasks` before `bg_worker`
 - **dicom_worker**: DICOM-specific task processor (Procrastinate queue: `dicom`); each worker runs `sweep_stale_tasks` before `bg_worker`
 - **mass_transfer_worker**: Mass transfer task processor (Procrastinate queue: `mass_transfer`); each worker runs `sweep_stale_tasks` before `bg_worker`
-- **receiver**: C-STORE SCP server (port 11112 internal; 11122 on host in dev, `RECEIVER_PORT` in prod) - receives DICOM from C-MOVE
+- **receiver**: C-STORE SCP server (port 11112 internal; `RECEIVER_DEV_PORT` (11122) on host in dev, `RECEIVER_PORT` in prod) - receives DICOM from C-MOVE
 - **postgres**: PostgreSQL 17 database (port 5432, published on the host only in dev via `POSTGRES_DEV_PORT`)
-- **orthanc1**: Test DICOM server (DICOM port 7501, published on host; HTTP 6501 internal, admin proxy at `/orthanc1/`)
-- **orthanc2**: Test DICOM server (DICOM port 7502, published on host; HTTP 6502 internal, admin proxy at `/orthanc2/`)
+- **orthanc1**: Test DICOM server (DICOM port 7501, published on host as `ORTHANC1_DEV_PORT` (7501); HTTP 6501 internal, admin proxy at `/orthanc1/`)
+- **orthanc2**: Test DICOM server (DICOM port 7502, published on host as `ORTHANC2_DEV_PORT` (7502); HTTP 6502 internal, admin proxy at `/orthanc2/`)
 
 ## Environment Variables
 
@@ -179,6 +179,7 @@ quoted: the file is passed to the containers as is, and `docker stack deploy` ke
 - `WAIT_POSTGRES_TIMEOUT`: Seconds containers wait for Postgres at startup (default 180)
 - `WEB_REPLICAS`, `DICOM_WORKER_REPLICAS`, `MASS_TRANSFER_WORKER_REPLICAS`: Service scaling (production)
 - `ADIT_IMAGE`, `STACK_NAME`: Image for the app services and Swarm stack name (default `adit_dev` / `adit_prod`; also derives session/CSRF cookie names)
+- `WEB_DEV_PORT`, `POSTGRES_DEV_PORT`, `REMOTE_DEBUGGING_PORT`, `RECEIVER_DEV_PORT`, `ORTHANC1_DEV_PORT`, `ORTHANC2_DEV_PORT`: Host ports of the development stack (a git worktree shifts them, see "Git Worktrees")
 - `OTEL_EXPORTER_OTLP_ENDPOINT`: OTLP HTTP endpoint for OpenTelemetry
 - `TIME_ZONE`: Server timezone (default `UTC`)
 - `CALLING_AE_TITLE`: ADIT's DICOM Application Entity title (required; `example.env` uses `ADIT1DEV`)
@@ -188,6 +189,12 @@ quoted: the file is passed to the containers as is, and `docker stack deploy` ke
 - `MOUNT_DIR`: Directory for mounting download folders
 - `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS`: Seconds without worker heartbeat before an `IN_PROGRESS` task counts as abandoned (default 30, never lower)
 - `DICOM_TASK_SWEEP_CRON`: Schedule of the stale task sweep (default `* * * * *`)
+
+## Git Worktrees
+
+In a linked worktree (e.g. `.claude/worktrees/<name>`, into which Claude Code copies the files listed in `.worktreeinclude`), every `uv run cli` command except `init-workspace` first gives the worktree a slot N in its `.env`: the host ports from `docker-compose.dev.yml` shifted by N × 100 (slot 1: web 8100, Postgres 5532, debugger 5778, receiver 11222, Orthancs 7601/7602) and `STACK_NAME=adit_wt<N>_<name>`, so it runs its own containers, volumes and database, with session cookies that don't log the main checkout out. The first command picks the slot, skipping any whose ports are in use, and later commands keep it. In a worktree git can't read (its `.git` file points at a path that doesn't exist here, or git refuses it as another user's), these commands stop with an error instead, since its `.env` is still the main checkout's. Values changed by hand in the worktree's `.env` stay; `uv run cli worktree-env --slot N` picks another slot, and with it a new stack name, so an empty database. VS Code's `.vscode/launch.json` attaches to 5678, the main checkout's debugger; in a worktree, attach to its `REMOTE_DEBUGGING_PORT` instead. Before deleting a worktree, run `uv run cli compose-down -- -v`. A worktree deleted without that leaves its stack behind, or only its volumes if it was stopped without `-v`: `docker compose ls -a` lists the projects that still have containers, and `docker volume ls --filter label=com.docker.compose.project --format '{{.Label "com.docker.compose.project"}}' | sort -u` those that still have volumes. For a project named after a worktree that `git worktree list` no longer shows, `docker compose -p <project> down -v` removes its containers, volumes and network, and `docker images --filter label=com.docker.compose.project=<project>` lists the images it leaves for `docker image rm`. Details: adit-radis-shared's `adit_radis_shared/cli/worktree_env.py`.
+
+If a stack fails because a host port is taken ("port is already allocated", "address already in use"), another program holds it: leave that program alone. Set a free port for that variable in this checkout's `.env`; in a worktree, later `uv run cli` commands keep it.
 
 ## Code Standards
 

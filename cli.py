@@ -13,6 +13,8 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
+
+app.callback()(commands.worktree_guard)
 app.command()(commands.init_workspace)
 app.command()(commands.randomize_env_secrets)
 app.command()(commands.compose_build)
@@ -35,6 +37,7 @@ app.command()(commands.generate_certificate_chain)
 app.command()(commands.generate_certificate_files)
 app.command()(commands.upgrade_postgres_volume)
 app.command()(commands.try_github_actions)
+app.command()(commands.worktree_env)
 
 
 @app.command()
