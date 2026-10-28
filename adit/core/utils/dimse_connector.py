@@ -3,6 +3,7 @@ import logging
 import threading
 import time
 from collections.abc import Callable, Iterable, Iterator
+from contextlib import suppress
 from functools import wraps
 from os import PathLike
 from pathlib import Path
@@ -416,6 +417,7 @@ class DimseConnector:
         assoc = self.assoc
         last_response_at = [time.monotonic()]
         move_done = threading.Event()
+        guard_fired = threading.Event()
 
         def stamped_responses() -> Iterator[tuple[Dataset, Dataset | None]]:
             for response in responses:
@@ -424,7 +426,7 @@ class DimseConnector:
 
         guard = threading.Thread(
             target=self._guard_c_move,
-            args=(assoc, last_response_at, last_activity, move_done),
+            args=(assoc, last_response_at, last_activity, move_done, guard_fired),
             name="c-move-guard",
             daemon=True,
         )
@@ -435,6 +437,12 @@ class DimseConnector:
         finally:
             move_done.set()
             guard.join()
+            if guard_fired.is_set():
+                # The final response may have come just as the guard fired. Its signal must not
+                # abort the next C-MOVE on the association then.
+                msg_queue = assoc.dimse.msg_queue
+                with msg_queue.mutex, suppress(ValueError):
+                    msg_queue.queue.remove((None, None))
             assoc.dimse_timeout = self.dimse_timeout
 
     def _guard_c_move(
@@ -443,6 +451,7 @@ class DimseConnector:
         last_response_at: list[float],
         last_activity: Callable[[], float],
         move_done: threading.Event,
+        guard_fired: threading.Event,
     ) -> None:
         assert self.dimse_timeout is not None
         try:
@@ -462,6 +471,7 @@ class DimseConnector:
 
         # What an expired DIMSE timeout delivers: pynetdicom ends the wait for the next response
         # and aborts the association. During a C-MOVE only that wait reads the queue.
+        guard_fired.set()
         assoc.dimse.msg_queue.put((None, None))
 
     @retry_dimse_store

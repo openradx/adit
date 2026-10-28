@@ -775,3 +775,49 @@ def test_guard_wakes_the_move_when_its_activity_source_fails(caplog):
         assert _guard_threads() == []
     finally:
         scp.shutdown()
+
+
+@pytest.mark.django_db
+def test_guard_firing_as_the_move_ends_spares_the_next_move():
+    # Arrange: the guard fires only once the final response was handled, as when it arrives
+    # at the moment the guard gives up waiting for it
+    scp = _start_move_scp(9948, silence=0.5)
+    connector = _move_connector(9948, auto_close=False)
+    handle_responses = connector._handle_get_and_move_responses
+    responses_handled = threading.Event()
+
+    def handle_responses_then_signal(*args, **kwargs):
+        try:
+            return handle_responses(*args, **kwargs)
+        finally:
+            responses_handled.set()
+
+    def activity_failing_late() -> float:
+        responses_handled.wait(timeout=5)
+        raise RuntimeError("broken")
+
+    try:
+        with (
+            patch.object(
+                connector,
+                "_handle_get_and_move_responses",
+                side_effect=handle_responses_then_signal,
+            ),
+            stamina.set_testing(True),
+        ):
+            # Act
+            first_error = _run(
+                lambda: connector.send_c_move(
+                    _study_query(), "DEST", last_activity=activity_failing_late
+                )
+            )
+            second_error = _run(
+                lambda: connector.send_c_move(_study_query(), "DEST", last_activity=time.monotonic)
+            )
+
+        # Assert
+        assert first_error is None
+        assert second_error is None
+    finally:
+        connector.close_connection()
+        scp.shutdown()
