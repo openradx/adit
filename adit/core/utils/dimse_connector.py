@@ -1,6 +1,6 @@
 import inspect
 import logging
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from functools import wraps
 from os import PathLike
 from pathlib import Path
@@ -35,7 +35,7 @@ from pynetdicom.sop_class import (
 )
 from pynetdicom.status import code_to_category
 
-from ..errors import DicomError, RetriableDicomError
+from ..errors import AssociationLostError, DicomError, RetriableDicomError
 from ..models import DicomServer
 from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
@@ -279,7 +279,7 @@ class DimseConnector:
         result_counter = 0
         for status, identifier in responses:
             if not status:
-                raise RetriableDicomError(
+                raise AssociationLostError(
                     "Connection timed out, was aborted or received invalid response."
                 )
 
@@ -340,6 +340,32 @@ class DimseConnector:
     @retry_dimse_retrieve
     @connect_to_server("C-MOVE")
     def send_c_move(self, query: QueryDataset, dest_aet: str, msg_id: int = 1) -> None:
+        self._send_c_move(query, dest_aet, msg_id)
+
+    @connect_to_server("C-MOVE")
+    def send_c_move_batch(self, queries: Iterable[QueryDataset], dest_aet: str) -> None:
+        """Send several C-MOVEs over one association without retrying them.
+
+        A failing C-MOVE is only logged as long as the association survives it (e.g. a
+        failure status for a single image), a lost association ends the batch.
+        """
+        for index, query in enumerate(queries):
+            # Message IDs are 16 bit
+            msg_id = index % 0xFFFF + 1
+            try:
+                self._send_c_move(query, dest_aet, msg_id)
+            except DicomError as err:
+                # After an A-ABORT of the peer the association may still count as alive
+                # for a moment.
+                if isinstance(err, AssociationLostError) or not (
+                    self.assoc and self.assoc.is_alive()
+                ):
+                    raise RetriableDicomError(
+                        "Lost the association while sending C-MOVEs."
+                    ) from err
+                logger.warning("C-MOVE failed, continuing with the next one: %s", err)
+
+    def _send_c_move(self, query: QueryDataset, dest_aet: str, msg_id: int) -> None:
         logger.debug("Sending C-MOVE with query:\n%s", query)
 
         # Transfer of only one study at a time is supported by ADIT
@@ -379,7 +405,7 @@ class DimseConnector:
             status = self.assoc.send_c_store(ds, msg_id)
 
             if not status:
-                raise RetriableDicomError(
+                raise AssociationLostError(
                     "Connection timed out, was aborted or received invalid response."
                 )
             else:
@@ -442,7 +468,7 @@ class DimseConnector:
     ) -> None:
         for status, identifier in responses:
             if not status:
-                raise RetriableDicomError(
+                raise AssociationLostError(
                     "Connection timed out, was aborted or received invalid response."
                 )
 

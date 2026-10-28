@@ -1082,6 +1082,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         image_count = 0
         study_uid_pseudonymized = ""
         series_uid_pseudonymized = ""
+        written_files: list[Path] = []
 
         def callback(ds: Dataset | None) -> None:
             nonlocal image_count, study_uid_pseudonymized, series_uid_pseudonymized
@@ -1099,6 +1100,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     study_uid_pseudonymized = str(ds.StudyInstanceUID)
                     series_uid_pseudonymized = str(ds.SeriesInstanceUID)
             file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
+            # Listed first, so that a file a failed write left behind is removed as well
+            written_files.append(output_path / file_name)
             write_dataset(ds, output_path / file_name)
             image_count += 1
 
@@ -1111,26 +1114,34 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         # failures are still handled by stamina/procrastinate at lower layers.
         # TODO: Revisit whether this belongs here, in the operator/connector
         # layer, or should be handled via a stamina retry on a raised exception.
-        operator.fetch_series(
-            patient_id=volume.patient_id,
-            study_uid=volume.study_instance_uid,
-            series_uid=volume.series_instance_uid,
-            callback=callback,
-        )
-        if image_count == 0 and volume.number_of_images > 0:
-            logger.warning(
-                "Fetch returned 0 images for %s (PACS reports %d) — retrying in %ds",
-                volume.series_instance_uid,
-                volume.number_of_images,
-                settings.MASS_TRANSFER_FETCH_RECONCILIATION_DELAY,
-            )
-            time.sleep(settings.MASS_TRANSFER_FETCH_RECONCILIATION_DELAY)
+        try:
             operator.fetch_series(
                 patient_id=volume.patient_id,
                 study_uid=volume.study_instance_uid,
                 series_uid=volume.series_instance_uid,
                 callback=callback,
             )
+            if image_count == 0 and volume.number_of_images > 0:
+                logger.warning(
+                    "Fetch returned 0 images for %s (PACS reports %d) — retrying in %ds",
+                    volume.series_instance_uid,
+                    volume.number_of_images,
+                    settings.MASS_TRANSFER_FETCH_RECONCILIATION_DELAY,
+                )
+                time.sleep(settings.MASS_TRANSFER_FETCH_RECONCILIATION_DELAY)
+                operator.fetch_series(
+                    patient_id=volume.patient_id,
+                    study_uid=volume.study_instance_uid,
+                    series_uid=volume.series_instance_uid,
+                    callback=callback,
+                )
+        except Exception:
+            # A failed series is not exported, so its partial files must not stay. Only the
+            # files of this series, as series with the same description and number share
+            # their folder.
+            for file_path in written_files:
+                file_path.unlink(missing_ok=True)
+            raise
 
         if image_count == 0 and volume.number_of_images > 0:
             logger.error(
