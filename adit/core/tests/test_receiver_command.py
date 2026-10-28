@@ -464,7 +464,9 @@ async def test_spooled_files_expire_after_the_ttl(
     assert any(study_uid in r.getMessage() for r in caplog.records if r.levelno == logging.INFO)
 
 
-def test_the_spool_evicts_the_oldest_files_over_its_size(tmp_path: Path, settings: Settings):
+def test_the_spool_evicts_the_oldest_files_over_its_size(
+    tmp_path: Path, settings: Settings, caplog: pytest.LogCaptureFixture
+):
     settings.RECEIVER_SPOOL_MAX_SIZE = 1  # MB
     command = _create_command(settings)
     files = {}
@@ -474,9 +476,11 @@ def test_the_spool_evicts_the_oldest_files_over_its_size(tmp_path: Path, setting
     too_large = tmp_path / "too_large"
     too_large.write_bytes(bytes(1024 * 1024 + 1))
 
-    for received_at, name in enumerate(["a", "b", "c"]):
-        command._spool_file("1.2.3", str(files[name]), {"SOPInstanceUID": name}, received_at)
-    command._spool_file("4.5.6", str(too_large), {"SOPInstanceUID": "big"}, 3)
+    with caplog.at_level(logging.WARNING):
+        for received_at, name in enumerate(["a", "b", "c"]):
+            command._spool_file("1.2.3", str(files[name]), {"SOPInstanceUID": name}, received_at)
+        command._spool_file("4.5.6", str(too_large), {"SOPInstanceUID": "big"}, 3)
+    evicting_warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
 
     assert not files["a"].exists()
     assert files["b"].exists() and files["c"].exists()
@@ -486,6 +490,14 @@ def test_the_spool_evicts_the_oldest_files_over_its_size(tmp_path: Path, setting
         "c",
     ]
     assert command._spool_size == 2 * 400 * 1024
+
+    # Reported in one line by the next expiry pass, as a full spool evicts a file for every
+    # file it takes
+    assert evicting_warnings == []
+    with caplog.at_level(logging.WARNING):
+        command._expire_spooled_files()
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1 and "discarded the 1 oldest" in warnings[0]
 
 
 @pytest.mark.asyncio

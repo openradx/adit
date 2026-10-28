@@ -92,8 +92,7 @@ class FileTransmitSession:
 
         Returns False if the session is closed.
         """
-        metadata = {"control": "synced", "token": token}
-        return self.queue_frame(struct.pack("!I", 0) + (json.dumps(metadata) + "\n").encode())
+        return self.queue_frame(file_frame_header(0, {"control": "synced", "token": token}))
 
     async def close(self) -> None:
         self.closed = True

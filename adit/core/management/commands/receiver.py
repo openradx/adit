@@ -70,6 +70,8 @@ class Command(AsyncServerCommand):
         # The spooled files of each study, oldest first, and their total size in bytes
         self._spool: dict[str, list[SpooledFile]] = {}
         self._spool_size = 0
+        # The files the full spool discarded since the last expiry pass, which reports them
+        self._discarded_when_full = 0
 
     async def run_server_async(self, **options):
         with tempfile.TemporaryDirectory(prefix="adit_receiver_") as tmpdir:
@@ -159,10 +161,7 @@ class Command(AsyncServerCommand):
         while self._spool_size > max_size:
             oldest_study = min(self._spool, key=lambda study: self._spool[study][0].received_at)
             self._unspool(oldest_study, self._spool[oldest_study][0])
-            logger.warning(
-                "The receiver's spool is full, discarding the oldest file of study '%s'.",
-                oldest_study,
-            )
+            self._discarded_when_full += 1
 
     def _unspool(self, study_uid: str, spooled: SpooledFile, delete: bool = True) -> None:
         self._spool[study_uid].remove(spooled)
@@ -193,6 +192,14 @@ class Command(AsyncServerCommand):
         session.queue_synced(REPLAY_SYNC_TOKEN)
 
     def _expire_spooled_files(self) -> None:
+        if self._discarded_when_full:
+            # Reported here, as a full spool discards a file for every file it takes
+            logger.warning(
+                "The receiver's spool was full, discarded the %d oldest files.",
+                self._discarded_when_full,
+            )
+            self._discarded_when_full = 0
+
         expired_before = time.monotonic() - settings.RECEIVER_SPOOL_TTL
         for study_uid, files in list(self._spool.items()):
             expired = [spooled for spooled in files if spooled.received_at < expired_before]
