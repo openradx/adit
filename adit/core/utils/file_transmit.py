@@ -2,17 +2,22 @@ import asyncio
 import json
 import logging
 import struct
+import tempfile
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
 from os import PathLike
 
 import aiofiles
-from aiofiles import os, tempfile
+from aiofiles import os
 
 BUFFER_SIZE = 64 * 1024  # 64kb
+
+SUBSCRIBED_ACK = b"subscribed\n"
 
 SubscribeHandler = Callable[[str], None | Awaitable[None]]
 UnsubscribeHandler = Callable[[str], None | Awaitable[None]]
 FileSentHandler = Callable[[], None]
+SubscribedHandler = Callable[[], None]
 Metadata = dict[str, str]
 FileReceivedHandler = Callable[[str, Metadata], Awaitable[bool | None] | bool | None]
 
@@ -63,11 +68,11 @@ class FileTransmitServer:
     _server: asyncio.Server | None = None
     _subscribe_handler: SubscribeHandler | None = None
     _unsubscribe_handler: UnsubscribeHandler | None = None
-    _sessions: list[FileTransmitSession] = []
 
     def __init__(self, host: str, port: int):
         self._host = host
         self._port = port
+        self._sessions: list[FileTransmitSession] = []
 
     def set_subscribe_handler(self, subscribe_handler: SubscribeHandler | None):
         """Called when a client subscribes to a topic."""
@@ -82,11 +87,19 @@ class FileTransmitServer:
         topic: str,
         file_path: PathLike | str,
         metadata: dict[str, str] | None = None,
-    ):
-        """Publishes a file to all clients that subscribed to the given topic."""
-        for session in self._sessions:
+    ) -> int:
+        """Publishes a file to all clients that subscribed to the given topic.
+
+        Returns the number of clients the file was sent to.
+        """
+        sent_count = 0
+        # Iterate over a copy as sessions of disconnecting clients are removed concurrently,
+        # which would otherwise skip the next session.
+        for session in list(self._sessions):
             if session.topic == topic:
                 await session.send_file(file_path, metadata)
+                sent_count += 1
+        return sent_count
 
     async def start(self):
         self._server = await asyncio.start_server(self._handle_connection, self._host, self._port)
@@ -115,6 +128,11 @@ class FileTransmitServer:
         self._sessions.append(session)
 
         try:
+            # Written before the first await, so it precedes any file published to this session.
+            # Clients wait for it before triggering anything that publishes files to them.
+            writer.write(SUBSCRIBED_ACK)
+            await writer.drain()
+
             if self._subscribe_handler:
                 if asyncio.iscoroutinefunction(self._subscribe_handler):
                     await self._subscribe_handler(topic)
@@ -155,6 +173,7 @@ class FileTransmitClient:
         self,
         topic: str,
         file_received_handler: FileReceivedHandler,
+        subscribed_handler: SubscribedHandler | None = None,
     ):
         """Subscribes to a topic and receives all files that are published to this topic.
 
@@ -162,6 +181,8 @@ class FileTransmitClient:
         path to the file received. The handler should process the file, maybe move it to a
         new location or delete it afterward. If the file_received_handler returns True,
         the client will unsubscribe from the topic.
+        The subscribed_handler is called once the server has registered the subscription,
+        so that files published from then on reach this client.
         The filename generator is called when the metadata is received and should return
         the filename to use for the file that is received. If no filename generator is
         set, the filename is randomly generated.
@@ -173,6 +194,13 @@ class FileTransmitClient:
             writer.write(f"{topic}\n".encode())
             await writer.drain()
 
+            ack = await reader.readline()
+            if ack != SUBSCRIBED_ACK:
+                raise ConnectionError(f"File transmit server did not acknowledge topic {topic}.")
+
+            if subscribed_handler:
+                subscribed_handler()
+
             # And wait for the server to send files regarding this topic
             while True:
                 # Receive file size
@@ -183,20 +211,35 @@ class FileTransmitClient:
                 metadata_bytes = await reader.readline()
                 metadata: Metadata = json.loads(metadata_bytes.decode().strip())
 
-                async with tempfile.NamedTemporaryFile(delete=False) as f:
-                    remaining_bytes = file_size
-                    while remaining_bytes > 0:
-                        chunk_size = min(remaining_bytes, BUFFER_SIZE)
-                        data = await reader.read(chunk_size)
-                        await f.write(data)
-                        remaining_bytes -= len(data)
+                # Created and opened without an await, so that wherever the subscription is
+                # cancelled the file is closed and its name is known, as it may contain
+                # patient data
+                fd, file_name = tempfile.mkstemp()
+                try:
+                    file = open(fd, "wb")
+                    try:
+                        remaining_bytes = file_size
+                        while remaining_bytes > 0:
+                            chunk_size = min(remaining_bytes, BUFFER_SIZE)
+                            # Raises IncompleteReadError if the server goes away mid-file
+                            data = await reader.readexactly(chunk_size)
+                            await asyncio.to_thread(file.write, data)
+                            remaining_bytes -= len(data)
+                    finally:
+                        # Goes on in its thread if cancelled meanwhile
+                        await asyncio.to_thread(file.close)
+                except BaseException:
+                    # A failing removal must not replace the original error
+                    with suppress(OSError):
+                        await os.remove(file_name)
+                    raise
 
                 # The file handler can report that no further files are needed by
                 # returning True which stops reading further data from the server.
                 finished = (
-                    await file_received_handler(f.name, metadata)  # type: ignore
+                    await file_received_handler(file_name, metadata)
                     if asyncio.iscoroutinefunction(file_received_handler)
-                    else file_received_handler(f.name, metadata)  # type: ignore
+                    else file_received_handler(file_name, metadata)
                 )
                 if finished:
                     break

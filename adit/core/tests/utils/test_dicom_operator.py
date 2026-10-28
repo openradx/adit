@@ -1,5 +1,8 @@
 import asyncio
 import errno
+import json
+import socket
+import struct
 import threading
 from pathlib import Path
 from time import sleep
@@ -14,12 +17,12 @@ from pynetdicom.sop_class import (
 from pytest_django.fixtures import Settings
 from pytest_mock import MockerFixture
 
-from adit.core.errors import DicomError
+from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.factories import DicomWebServerFactory
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import read_dataset
-from adit.core.utils.file_transmit import FileTransmitServer
+from adit.core.utils.file_transmit import SUBSCRIBED_ACK, FileTransmitServer
 from adit.core.utils.testing_helpers import (
     DicomTestHelper,
     create_association_mock,
@@ -211,9 +214,127 @@ def test_download_series_with_c_move(settings: Settings, mocker: MockerFixture):
     )
 
     # Assert
-    assert subscribed_topic == (f"{dicom_operator.server.ae_title}\\{ds.StudyInstanceUID}")
+    assert subscribed_topic == ds.StudyInstanceUID
     association_mock.send_c_move.assert_called_once()
     assert received_ds[0] == ds
+
+
+def _start_transmit_server(port: int) -> tuple[FileTransmitServer, asyncio.AbstractEventLoop]:
+    """Run a file transmit server in its own thread like the receiver container does."""
+    server = FileTransmitServer("127.0.0.1", port)
+    loops: list[asyncio.AbstractEventLoop] = []
+    started = threading.Event()
+
+    async def serve():
+        loops.append(asyncio.get_running_loop())
+        started.set()
+        await server.start()
+
+    threading.Thread(target=asyncio.run, args=(serve(),), daemon=True).start()
+    started.wait()
+    sleep(0.5)  # Make sure transmit server is listening
+    return server, loops[0]
+
+
+def _setup_c_move_operator(settings: Settings, mocker: MockerFixture, port: int):
+    settings.FILE_TRANSMIT_HOST = "127.0.0.1"
+    settings.FILE_TRANSMIT_PORT = port
+    settings.C_MOVE_DOWNLOAD_TIMEOUT = 1
+    associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+    association_mock = create_association_mock()
+    associate_mock.return_value = association_mock
+    association_mock.send_c_move.return_value = DicomTestHelper.create_successful_c_move_response()
+    dicom_operator = create_dicom_operator()
+    dicom_operator.server.study_root_get_support = False
+    dicom_operator.server.patient_root_get_support = False
+    path = Path(settings.BASE_PATH) / "samples" / "dicoms"
+    file_path = next(path.rglob("*.dcm"))
+    ds = read_dataset(file_path)
+    return dicom_operator, association_mock, file_path, ds
+
+
+@pytest.mark.django_db
+def test_c_move_images_sent_right_away_reach_the_worker(settings: Settings, mocker: MockerFixture):
+    # Arrange
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17998
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17998)
+
+    def send_c_move(*args, **kwargs):
+        # The PACS starts sending images as soon as it got the C-MOVE request
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received_ds = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received_ds.append
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert received_ds == [ds]
+
+
+@pytest.mark.django_db
+def test_c_move_is_not_sent_when_receiver_is_unreachable(settings: Settings, mocker: MockerFixture):
+    # Arrange: nothing listens on the file transmit port
+    dicom_operator, association_mock, _, ds = _setup_c_move_operator(settings, mocker, 17997)
+    settings.C_MOVE_SUBSCRIBE_TIMEOUT = 2
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+
+    # Act / Assert
+    with pytest.raises(RetriableDicomError, match="receiver"):
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+        )
+    association_mock.send_c_move.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_c_move_fails_when_receiver_connection_drops(settings: Settings, mocker: MockerFixture):
+    # Arrange: two images expected, the receiver sends one and then drops the connection
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17996
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}, {"SOPInstanceUID": "1.2.3.4.5.999"}]
+    )
+    data = file_path.read_bytes()
+    metadata = (json.dumps({"SOPInstanceUID": ds.SOPInstanceUID}) + "\n").encode()
+    listener = socket.create_server(("127.0.0.1", 17996))
+
+    def serve_one_file_then_drop():
+        conn, _ = listener.accept()
+        with conn:
+            conn.recv(1024)  # topic
+            conn.sendall(SUBSCRIBED_ACK + struct.pack("!I", len(data)) + metadata + data)
+
+    threading.Thread(target=serve_one_file_then_drop, daemon=True).start()
+    received_ds = []
+
+    # Act / Assert
+    try:
+        with pytest.raises(RetriableDicomError, match="receiver"):
+            dicom_operator.fetch_series(
+                ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received_ds.append
+            )
+    finally:
+        listener.close()
+    assert received_ds == [ds]
 
 
 # ---------------------------------------------------------------------------
