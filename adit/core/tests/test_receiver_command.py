@@ -385,12 +385,15 @@ async def test_a_file_of_another_series_is_spooled_for_the_fetch_of_its_series(
         client_tasks.append(
             await _subscribe_and_record(9959, ds.StudyInstanceUID, other_events, "1.2.3.4")
         )
+        await wait_until(lambda: f"synced {REPLAY_SYNC_TOKEN}" in other_events)
         command._queue.sync_q.put(ReceivedFile(str(received_file), "PACS1"))
         await wait_until(lambda: ds.StudyInstanceUID in command._spool)
 
         client_tasks.append(
             await _subscribe_and_record(9959, ds.StudyInstanceUID, own_events, ds.SeriesInstanceUID)
         )
+        # The replayed file comes before the confirmation of the replay
+        await wait_until(lambda: f"synced {REPLAY_SYNC_TOKEN}" in own_events)
         await wait_until(lambda: not received_file.exists())
     finally:
         send_task.cancel()
