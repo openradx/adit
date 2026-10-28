@@ -1,3 +1,4 @@
+import errno
 import json
 import warnings
 from datetime import date, datetime, timedelta
@@ -2579,6 +2580,37 @@ def test_export_series_removes_only_its_own_files_when_it_fails(
         processor._export_series(operator, volume, output_path, "subj", None)
 
     assert [path.name for path in output_path.iterdir()] == ["other-series-image.dcm"]
+
+
+def test_export_series_removes_the_file_whose_writing_failed(mocker: MockerFixture, tmp_path: Path):
+    processor = _make_processor(mocker)
+    output_path = tmp_path / "Axial_1"
+    output_path.mkdir()
+    sample_file = next((Path(settings.BASE_PATH) / "samples" / "dicoms").rglob("*.dcm"))
+
+    def write_partially(ds: Dataset, path: Path):
+        path.write_bytes(b"truncated")
+        raise OSError(errno.ENOSPC, "No space left on device", str(path))
+
+    mocker.patch("adit.mass_transfer.processors.write_dataset", side_effect=write_partially)
+
+    def fetch_series(*, callback, **kwargs):
+        callback(read_dataset(sample_file))
+
+    operator = mocker.MagicMock()
+    operator.fetch_series.side_effect = fetch_series
+    volume = MassTransferVolume(
+        patient_id="PAT1",
+        study_instance_uid="study-1",
+        series_instance_uid="s-1",
+        study_datetime=timezone.now(),
+        number_of_images=1,
+    )
+
+    with pytest.raises(OSError):
+        processor._export_series(operator, volume, output_path, "subj", None)
+
+    assert list(output_path.iterdir()) == []
 
 
 def test_process_final_attempt_all_dead_is_failure(mocker: MockerFixture, tmp_path: Path):

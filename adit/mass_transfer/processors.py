@@ -1100,8 +1100,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     study_uid_pseudonymized = str(ds.StudyInstanceUID)
                     series_uid_pseudonymized = str(ds.SeriesInstanceUID)
             file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
-            write_dataset(ds, output_path / file_name)
+            # Listed first, so that a file a failed write left behind is removed as well
             written_files.append(output_path / file_name)
+            write_dataset(ds, output_path / file_name)
             image_count += 1
 
         # Reconciliation between the discovery and transfer phases: discovery
