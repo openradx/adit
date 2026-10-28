@@ -876,10 +876,13 @@ class DicomOperator:
             if count is None or fetch.reported > count:
                 fetch.series_counts[series_uid] = fetch.reported
 
-        if not fetch.image_uids:
-            # Images that are not known nor counted are only waited for until the receiver
-            # confirmed what it got
+        # Images that are neither listed nor counted are only waited for until the receiver
+        # confirmed what it got. Without a count of the PACS, these include those a capped list
+        # misses. Otherwise the confirmation is only waited for while images are missing, as it
+        # comes behind the receiver's backlog of every study.
+        if not fetch.image_uids or fetch.reported is None:
             self._sync_with_receiver(fetch, str(next(fetch.tokens)), stop_when_complete=False)
+        if not fetch.image_uids:
             if fetch.reported is None and all(c is None for c in fetch.series_counts.values()):
                 logger.info(
                     "The completeness of study %s can't be checked beyond an image per series, "

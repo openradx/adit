@@ -216,7 +216,11 @@ def test_download_series_with_c_move(settings: Settings, mocker: MockerFixture):
             loops.append(asyncio.get_running_loop())
             session.queue_synced(REPLAY_SYNC_TOKEN)  # Nothing replayed
 
+        async def on_sync(session: FileTransmitSession, token: str):
+            session.queue_synced(token)
+
         transmit_server.set_subscribe_handler(on_subscribe)
+        transmit_server.set_sync_request_handler(on_sync)
         asyncio.run(transmit_server.start(), debug=True)
 
     def send_c_move(*args, **kwargs):
@@ -654,6 +658,7 @@ def _setup_refetch(
     on_sync: Callable[[FileTransmitSession, str], Awaitable[bool]] | None = None,
     replayed: list[str | None] | None = None,
     series_counts: dict[str | None, int | None] | None = None,
+    reported: int | None = None,
 ):
     """The sample image and `images` (by default B and C) are expected, each image maps to
     its series (None for the series of the sample image). The first C-MOVE only delivers
@@ -669,7 +674,8 @@ def _setup_refetch(
     image. `on_sync` is passed to the transmit server, which replays the `replayed` images
     (None for the sample image). The SERIES-level C-FIND counts the images of each series as
     listed, unless `series_counts` sets the count of a series (None for the series of the sample
-    image) or omits it (None as count)."""
+    image) or omits it (None as count). The first C-MOVE reports `reported` images as sent, if
+    given."""
     dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(settings, mocker, port)
     # Most images are missing after the first C-MOVE
     settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 100
@@ -736,6 +742,8 @@ def _setup_refetch(
     def send_c_move(query_ds: Dataset, *args, **kwargs):
         if query_ds.QueryRetrieveLevel != "IMAGE":
             publish(ds.SOPInstanceUID)
+            if reported is not None:
+                return _c_move_response(reported)
             return DicomTestHelper.create_successful_c_move_response()
 
         image_uid = query_ds.SOPInstanceUID
@@ -1002,6 +1010,54 @@ def test_c_move_goes_on_without_a_replay_confirmation(settings: Settings, mocker
 
     # Assert: the replay only saves work, so the download doesn't depend on it
     assert received == [ds]
+
+
+@pytest.mark.django_db
+def test_c_move_with_a_capped_list_waits_for_the_images_the_receiver_still_forwards(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the IMAGE-level C-FIND lists only the sample image, and the PACS reports no
+    # sub-operations. An unlisted image of the series is still in the receiver's backlog
+    # when the C-MOVE ends.
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17939
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    series_metadata = {"SeriesInstanceUID": ds.SeriesInstanceUID}
+
+    async def publish_backlog(session: FileTransmitSession, token: str) -> bool:
+        await transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": IMAGE_B} | series_metadata
+        )
+        return True
+
+    transmit_server, loop = _start_transmit_server(17939, on_sync=publish_backlog)
+
+    def send_c_move(*args, **kwargs):
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": ds.SOPInstanceUID} | series_metadata
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[str] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert: the receiver's confirmation comes behind the unlisted image
+    assert len(received) == 2
 
 
 @pytest.mark.django_db
@@ -2444,7 +2500,8 @@ def test_c_move_keeps_waiting_for_the_sync_while_images_arrive(
 def test_c_move_succeeds_when_the_last_image_arrives_while_a_sync_is_pending(
     settings: Settings, mocker: MockerFixture
 ):
-    # Arrange: the receiver forwards the last missing image instead of answering the sync
+    # Arrange: the receiver forwards the last missing images instead of answering the sync,
+    # and the PACS reports them as sent
     async def on_sync(session: FileTransmitSession, token: str) -> bool:
         for image_uid in [IMAGE_B, IMAGE_C]:
             metadata = {"SOPInstanceUID": image_uid}
@@ -2452,7 +2509,7 @@ def test_c_move_succeeds_when_the_last_image_arrives_while_a_sync_is_pending(
         return False
 
     dicom_operator, ds, requested, stop = _setup_refetch(
-        settings, mocker, 17970, deliver=set(), on_sync=on_sync
+        settings, mocker, 17970, deliver=set(), on_sync=on_sync, reported=3
     )
     sample_file = next((Path(settings.BASE_PATH) / "samples" / "dicoms").rglob("*.dcm"))
     received: list[str] = []
