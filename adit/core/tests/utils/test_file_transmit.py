@@ -483,6 +483,42 @@ async def test_publish_file_releases_a_sent_file_as_delivered():
 
 
 @pytest.mark.asyncio
+async def test_publish_file_skips_subscribers_of_another_scope():
+    server = FileTransmitServer(HOST, 9949, write_timeout=WRITE_TIMEOUT)
+    server_task = asyncio.create_task(server.start())
+    await asyncio.sleep(0.5)
+    received: list[str] = []
+
+    async def file_received_handler(filename: str, metadata: Metadata):
+        received.append(metadata["name"])
+        await os.remove(filename)
+        return False
+
+    subscribed = asyncio.Event()
+    client_task = asyncio.create_task(
+        FileTransmitClient(HOST, 9949).subscribe(
+            "foobar", file_received_handler, subscribed_handler=subscribed.set, scope="1.2.3.4"
+        )
+    )
+    try:
+        await asyncio.wait_for(subscribed.wait(), timeout=5)
+        assert (
+            await server.publish_file("foobar", _sample(), {"name": "other"}, scope="1.2.3.5") == 0
+        )
+        assert await server.publish_file("foobar", _sample(), {"name": "own"}, scope="1.2.3.4") == 1
+        assert await server.publish_file("foobar", _sample(), {"name": "unscoped"}) == 1
+        await wait_until(lambda: len(received) == 2)
+    finally:
+        client_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await client_task
+        await server.stop()
+        await server_task
+
+    assert received == ["own", "unscoped"]
+
+
+@pytest.mark.asyncio
 async def test_publish_file_without_subscriber_releases_right_away():
     server = FileTransmitServer(HOST, 9952, write_timeout=WRITE_TIMEOUT)
     released: list[bool] = []

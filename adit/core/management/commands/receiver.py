@@ -267,6 +267,9 @@ class Command(AsyncServerCommand):
                     release=functools.partial(
                         self._release_received_file, study_uid, file_path, metadata, received_at
                     ),
+                    # A worker that fetches another series would discard it, yet count as
+                    # having got it, so it would not be spooled for the fetch of its series
+                    scope=series_uid,
                 )
                 if not sent_count:
                     # Also happens for late duplicates after the worker got all its images

@@ -48,8 +48,8 @@ class FileTransmitSession:
     A session has its own queue of frames and one sender task that writes them, so a client that
     reads slowly or not at all only holds up its own files. Besides files, the frames include
     control frames: frames of size 0 whose metadata has a "control" key, e.g. the answer to a
-    sync request of the client. The client may name a scope within its topic, which only the
-    subscribe handler interprets.
+    sync request of the client. The client may name a scope within its topic: the session takes
+    no file published with another scope, and the subscribe handler interprets it as well.
     """
 
     def __init__(
@@ -221,8 +221,11 @@ class FileTransmitServer:
         file_path: PathLike | str,
         metadata: dict[str, str] | None = None,
         release: Release | None = None,
+        scope: str | None = None,
     ) -> int:
         """Queues a file to all clients that subscribed to the given topic.
+
+        A file with a scope only goes to the clients that subscribed without one or to the same.
 
         Returns the number of clients that took the file. `release` is called once all of them
         are done with it (sent, failed or disconnected), right away if none took it, with
@@ -246,7 +249,9 @@ class FileTransmitServer:
         # with the file before all of them are counted.
         taken = 0
         for session in self._sessions:
-            if session.topic == topic and session.queue_frame(header, file_path, release_one):
+            if session.topic != topic or (scope and session.scope and session.scope != scope):
+                continue
+            if session.queue_frame(header, file_path, release_one):
                 taken += 1
         remaining = taken
         if not taken and release:

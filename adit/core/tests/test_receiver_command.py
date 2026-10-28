@@ -174,7 +174,7 @@ async def test_send_files_deletes_a_file_it_could_not_publish(
     command = _create_command(settings)
     published: list[str] = []
 
-    async def publish_file(topic, file_path, metadata=None, release=None):
+    async def publish_file(topic, file_path, metadata=None, release=None, scope=None):
         published.append(file_path)
         raise OSError("disk gone")
 
@@ -200,7 +200,7 @@ async def test_release_of_a_file_already_gone_is_silent(
     command = _create_command(settings)
     published: list[str] = []
 
-    async def publish_file(topic, file_path, metadata=None, release=None):
+    async def publish_file(topic, file_path, metadata=None, release=None, scope=None):
         # The file is gone before a session is done with it, e.g. when the receiver left its
         # temp folder
         published.append(file_path)
@@ -365,6 +365,45 @@ async def test_a_subscriber_of_a_series_gets_only_its_files_replayed(
     # Assert: the other series was kept for the next fetch
     assert series_events == ["file 1.2.3.2.1 from PACS1", f"synced {REPLAY_SYNC_TOKEN}"]
     assert study_events == ["file 1.2.3.1.1 from PACS1", f"synced {REPLAY_SYNC_TOKEN}"]
+    assert command._spool == {}
+
+
+@pytest.mark.asyncio
+async def test_a_file_of_another_series_is_spooled_for_the_fetch_of_its_series(
+    received_file: Path, settings: Settings
+):
+    ds = read_dataset(received_file)
+    command = _create_command(settings, 9959)
+    server_task = asyncio.create_task(command._file_transmit.start())
+    await asyncio.sleep(0.5)
+    send_task = asyncio.create_task(command._send_files())
+    other_events: list[str] = []
+    own_events: list[str] = []
+    client_tasks: list[asyncio.Task] = []
+    try:
+        # A fetch of another series of the study is subscribed when the file comes
+        client_tasks.append(
+            await _subscribe_and_record(9959, ds.StudyInstanceUID, other_events, "1.2.3.4")
+        )
+        command._queue.sync_q.put(ReceivedFile(str(received_file), "PACS1"))
+        await wait_until(lambda: ds.StudyInstanceUID in command._spool)
+
+        client_tasks.append(
+            await _subscribe_and_record(9959, ds.StudyInstanceUID, own_events, ds.SeriesInstanceUID)
+        )
+        await wait_until(lambda: not received_file.exists())
+    finally:
+        send_task.cancel()
+        for client_task in client_tasks:
+            client_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await client_task
+        await command._file_transmit.stop()
+        await server_task
+        await _close_queue(command)
+
+    assert other_events == [f"synced {REPLAY_SYNC_TOKEN}"]
+    assert own_events == [f"file {ds.SOPInstanceUID} from PACS1", f"synced {REPLAY_SYNC_TOKEN}"]
     assert command._spool == {}
 
 
