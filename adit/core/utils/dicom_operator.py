@@ -16,8 +16,10 @@ import logging
 import queue
 import threading
 import time
+from collections import Counter
 from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass, field
 from os import PathLike
 
 from aiofiles import os as async_os
@@ -36,9 +38,118 @@ from .dicom_utils import (
 )
 from .dicom_web_connector import DicomWebConnector
 from .dimse_connector import DimseConnector
-from .file_transmit import FileTransmitClient, Metadata
+from .file_transmit import REPLAY_SYNC_TOKEN, FileTransmitClient, Metadata
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _CMoveFetch:
+    """The state of one C-MOVE download, shared by the worker and its consumer thread.
+
+    Without IMAGE-level queries, the images of each series are counted instead of listed, as
+    far as the PACS reports how many there are.
+    """
+
+    server: DicomServer
+    query: QueryDataset
+    # The listed images: SOPInstanceUID -> SeriesInstanceUID
+    image_uids: dict[str, str]
+    # The counted series: SeriesInstanceUID -> image count, if the PACS reports it
+    series_counts: dict[str, int | None]
+    # The listed images not received yet, the consumer removes each one it handed over
+    missing_images: dict[str, str] = field(init=False)
+    # The images the consumer handed over: SOPInstanceUID -> SeriesInstanceUID (if known)
+    received: dict[str, str | None] = field(default_factory=dict)
+    # How many images the PACS reports its C-MOVE sent
+    reported: int | None = None
+    # When the consumer last handed over an image
+    last_image_at: float = field(default_factory=time.monotonic)
+    # When the consumer last received any image of this fetch. Duplicates count too, as a
+    # PACS sends the whole study again when a C-MOVE is retried, but images of other series
+    # of a series fetch don't.
+    last_received_at: float = field(default_factory=time.monotonic)
+    # Sync requests the consumer sends to the receiver, the tokens it confirmed, and the
+    # images still missing at the last confirmation
+    sync_requests: queue.SimpleQueue[str] = field(default_factory=queue.SimpleQueue)
+    synced_tokens: set[str] = field(default_factory=set)
+    missing_at_sync: set[str] = field(default_factory=set)
+    tokens: Iterator[int] = field(default_factory=itertools.count)
+    # Errors while receiving the images
+    receiving_errors: list[Exception] = field(default_factory=list)
+    # Set once the receiver registered the subscription
+    subscribed: threading.Event = field(default_factory=threading.Event)
+    # Set to make sure the consumer thread finally stops
+    stop_consumer: threading.Event = field(default_factory=threading.Event)
+    # The thread that consumes the images from the receiver
+    consumer: Future[None] = field(init=False)
+    # The AE titles of images skipped as the server doesn't accept them, logged once
+    rejected_calling_ae_titles: set[str | None] = field(default_factory=set)
+
+    def __post_init__(self) -> None:
+        self.missing_images = dict(self.image_uids)
+
+    def receiving(self) -> bool:
+        return not self.receiving_errors and not self.consumer.done()
+
+    def in_scope(self, metadata: Metadata) -> bool:
+        calling_ae_title = metadata.get("CallingAETitle")
+        if not self.server.accepts_calling_ae_title(calling_ae_title):
+            if calling_ae_title not in self.rejected_calling_ae_titles:
+                self.rejected_calling_ae_titles.add(calling_ae_title)
+                logger.warning(
+                    "Skipping images of study %s from AE title %s, which is not accepted for %s.",
+                    self.query.StudyInstanceUID,
+                    calling_ae_title,
+                    self.server.ae_title,
+                )
+            return False
+        # Besides the listed images, every image of the requested study or series belongs to
+        # the fetch, as the IMAGE-level C-FIND of some PACS silently caps its results
+        if metadata["SOPInstanceUID"] in self.image_uids:
+            return True
+        if self.query.get("SOPInstanceUID"):
+            return False
+        series_uid = self.query.get("SeriesInstanceUID")
+        return not series_uid or metadata.get("SeriesInstanceUID") == series_uid
+
+    def series_count(self, series_uid: str) -> int:
+        # A series the C-FIND found holds an image at least, also without a count
+        return max(self.series_counts[series_uid] or 0, 1)
+
+    def expected_count(self) -> int:
+        return max(
+            len(self.image_uids),
+            self.reported or 0,
+            sum(self.series_count(series_uid) for series_uid in self.series_counts),
+        )
+
+    def short_series(self) -> dict[str, int]:
+        # Copied first, as the consumer adds to it meanwhile
+        received_per_series = Counter(list(self.received.values()))
+        shortfalls = {
+            uid: self.series_count(uid) - received_per_series[uid] for uid in self.series_counts
+        }
+        return {uid: shortfall for uid, shortfall in shortfalls.items() if shortfall > 0}
+
+    def missing_count(self) -> int:
+        # Images the PACS reports beyond the listed or counted ones that arrived are missing
+        # too, though it is unknown which ones
+        return max(
+            len(self.missing_images),
+            sum(self.short_series().values()),
+            (self.reported or 0) - len(self.received),
+        )
+
+    def delivery_broken(self) -> bool:
+        # When nothing or most of it arrived, the delivery is broken as a whole (or the PACS
+        # is overloaded), so one C-MOVE per image would only add load. The download fails
+        # instead and is retried as a whole.
+        return bool(self.missing_count()) and (
+            not self.received
+            or 100 * self.missing_count() / self.expected_count()
+            > settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT
+        )
 
 
 class DicomOperator:
@@ -574,12 +685,48 @@ class DicomOperator:
         query: QueryDataset,
         callback: Callable[[Dataset], None],
     ) -> None:
-        # When downloading images with C-MOVE we first must know all the SOPInstanceUIDs
-        # in advance so that we can check if all were received. Their SeriesInstanceUIDs
-        # are needed to fetch missing images again.
-        image_uids: dict[str, str]  # SOPInstanceUID -> SeriesInstanceUID
+        # The PACS sends the requested images to the receiver container (a C-STORE SCP), which
+        # forwards them over a TCP socket to the consumer thread.
+        fetch = self._list_c_move_images(query)
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            fetch.consumer = executor.submit(self._consume_from_receiver, fetch, callback)
+            try:
+                # Images the PACS sends before the receiver knows about us would be discarded
+                self._wait_for_subscription(fetch)
+                if self._receive_replay(fetch):
+                    self._move(fetch)
+                delivery_broken = fetch.delivery_broken()
+                if not delivery_broken:
+                    self._refetch(fetch)
+                if not fetch.receiving_errors:
+                    self._check_images_received(fetch, delivery_broken)
+            except Exception as err:
+                # The consumer may have ended the connection, which then fails the C-MOVE. Its
+                # errors are raised in the finally block instead.
+                if not fetch.receiving_errors:
+                    raise err
+            finally:
+                fetch.stop_consumer.set()
+
+                if fetch.receiving_errors:
+                    raise fetch.receiving_errors[0]
+
+                # A failure of the consumer itself, not of receiving an image
+                if fetch.consumer.done() and (consumer_error := fetch.consumer.exception()):
+                    raise consumer_error
+
+    def _list_c_move_images(self, query: QueryDataset) -> _CMoveFetch:
+        """List the images to fetch, so that it can be checked that all arrived.
+
+        Their SeriesInstanceUIDs are needed to fetch missing images again. Without IMAGE-level
+        queries, the series are counted instead.
+        """
+        image_uids: dict[str, str] = {}
+        series_counts: dict[str, int | None] = {}
         if image_uid := query.get("SOPInstanceUID"):
             image_uids = {image_uid: query.SeriesInstanceUID}
+        elif not self.server.image_level_find_support:
+            series_counts = self._count_series_images(query)
         elif series_uid := query.get("SeriesInstanceUID"):
             query_dataset = QueryDataset.create(
                 PatientID=query.PatientID,
@@ -611,168 +758,177 @@ class DicomOperator:
                     )
                 )
             }
+        return _CMoveFetch(self.server, query, image_uids, series_counts)
 
-        # The images not received yet, the consumer removes each one it handed over
-        missing_images = dict(image_uids)
-
-        # When the consumer last received an expected image
-        last_image_at = [time.monotonic()]
-
-        # When the consumer last received any image of this fetch. Duplicates count too, as a
-        # PACS sends the whole study again when a C-MOVE is retried, but images of other
-        # fetches of the study don't.
-        last_received_at = [time.monotonic()]
-
-        # Sync requests the consumer sends to the receiver, the tokens it confirmed, and the
-        # images still missing at the last confirmation
-        sync_requests: queue.SimpleQueue[str] = queue.SimpleQueue()
-        synced_tokens: set[str] = set()
-        missing_at_sync: set[str] = set()
-        tokens = itertools.count()
-
-        # A list of errors that may occur while receiving the images
-        receiving_errors: list[Exception] = []
-
-        # An event to signal that the receiver registered our subscription
-        subscribed_event = threading.Event()
-
-        # An event to make sure the consumer thread finally stops
-        stop_consumer_event = threading.Event()
-
-        # The requested images are sent to the receiver container (a C-STORE SCP server)
-        # by the C-MOVE operation. Then those are send via the transmitter (over TCP socket)
-        # which we consume in a separate thread.
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            consume_future = executor.submit(
-                self._consume_from_receiver,
-                query.StudyInstanceUID,
-                image_uids,
-                missing_images,
-                last_image_at,
-                last_received_at,
-                callback,
-                subscribed_event,
-                stop_consumer_event,
-                receiving_errors,
-                sync_requests,
-                synced_tokens,
-                missing_at_sync,
+    def _count_series_images(self, query: QueryDataset) -> dict[str, int | None]:
+        """The series of the query, each with its image count if the PACS returns it."""
+        series_query = QueryDataset.create(
+            PatientID=query.PatientID, StudyInstanceUID=query.StudyInstanceUID
+        )
+        if series_uid := query.get("SeriesInstanceUID"):
+            series_query = QueryDataset.create(
+                PatientID=query.PatientID,
+                StudyInstanceUID=query.StudyInstanceUID,
+                SeriesInstanceUID=series_uid,
             )
 
+        series_counts: dict[str, int | None] = {}
+        for series in list(self.find_series(series_query)):
             try:
-                # Images the PACS sends before the receiver knows about us would be discarded
-                self._wait_for_subscription(subscribed_event, consume_future)
+                count = int(series.get("NumberOfSeriesRelatedInstances"))
+            except (TypeError, ValueError):
+                # Not returned, or not a number
+                count = None
+            series_counts[series.SeriesInstanceUID] = count
+        return series_counts
 
-                self.dimse_connector.send_c_move(
-                    query,
-                    settings.RECEIVER_AE_TITLE,
-                    last_activity=lambda: last_received_at[0],
-                )
-                self._wait_for_delivery(
-                    query.StudyInstanceUID,
-                    image_uids,
-                    missing_images,
-                    last_image_at,
-                    last_received_at,
-                    sync_requests,
-                    synced_tokens,
-                    tokens,
-                    consume_future,
-                    receiving_errors,
-                )
-
-                # When nothing or most of it arrived, the delivery is broken as a whole (or the
-                # PACS is overloaded), so one C-MOVE per image would only add load. The
-                # download fails instead and is retried as a whole.
-                delivery_broken = bool(missing_images) and (
-                    len(missing_images) == len(image_uids)
-                    or 100 * len(missing_images) / len(image_uids)
-                    > settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT
-                )
-
-                for _ in range(0 if delivery_broken else settings.C_MOVE_REFETCH_ATTEMPTS):
-                    if not missing_images or receiving_errors or consume_future.done():
-                        break
-                    self._refetch_missing_images(
-                        query,
-                        missing_images,
-                        last_received_at,
-                        consume_future,
-                        receiving_errors,
-                        missing_at_sync,
-                    )
-                    self._wait_for_delivery(
-                        query.StudyInstanceUID,
-                        image_uids,
-                        missing_images,
-                        last_image_at,
-                        last_received_at,
-                        sync_requests,
-                        synced_tokens,
-                        tokens,
-                        consume_future,
-                        receiving_errors,
-                    )
-
-                if not receiving_errors:
-                    self._check_images_received(
-                        query.StudyInstanceUID, image_uids, missing_images, delivery_broken
-                    )
-            except Exception as err:
-                # We check here if an error occurred in the consumer thread and
-                # and only re-raise the error when non occurred.
-                # The consumer might also have aborted the connection which then raises
-                # an exception during C-MOVE.
-                # Errors in the consumer thread are handled in the finally block.
-                if not receiving_errors:
-                    raise err
-            finally:
-                stop_consumer_event.set()
-
-                if receiving_errors:
-                    raise receiving_errors[0]
-
-                # A failure of the consumer itself, not of receiving an image
-                if consume_future.done() and (consumer_error := consume_future.exception()):
-                    raise consumer_error
-
-    def _wait_for_subscription(
-        self, subscribed_event: threading.Event, consume_future: Future[None]
-    ) -> None:
+    def _wait_for_subscription(self, fetch: _CMoveFetch) -> None:
         deadline = time.monotonic() + settings.C_MOVE_SUBSCRIBE_TIMEOUT
-        while not subscribed_event.wait(timeout=0.1):
-            if consume_future.done() or time.monotonic() > deadline:
+        while not fetch.subscribed.wait(timeout=0.1):
+            if fetch.consumer.done() or time.monotonic() > deadline:
                 raise RetriableDicomError("Could not subscribe to the DICOM receiver.")
 
-    def _refetch_missing_images(
-        self,
-        query: QueryDataset,
-        missing_images: dict[str, str],
-        last_received_at: list[float],
-        consume_future: Future[None],
-        receiving_errors: list[Exception],
-        missing_at_sync: set[str],
-    ) -> None:
+    def _receive_replay(self, fetch: _CMoveFetch) -> bool:
+        """Take the images the receiver still holds and return whether the C-MOVE is needed.
+
+        The receiver holds images of the study, e.g. those an earlier attempt didn't get as its
+        worker restarted. With the list, the PACS is then only asked for the others: one by one
+        if they are few enough to be re-fetched and the PACS counts no more images per series
+        than listed, otherwise with the C-MOVE as a whole.
+        """
+        if not fetch.image_uids:
+            return True
+        study_uid = fetch.query.StudyInstanceUID
+        try:
+            self._sync_with_receiver(
+                fetch, REPLAY_SYNC_TOKEN, stop_when_complete=False, request=False
+            )
+        except RetriableDicomError:
+            # The replay only saves work, e.g. an older receiver doesn't confirm it
+            logger.info("The receiver didn't confirm its replay for study %s.", study_uid)
+        if not fetch.receiving():
+            # Nobody would take the images of a C-MOVE
+            raise RetriableDicomError("Connection to the DICOM receiver failed.")
+
+        # Images of the study or series the list misses show that it is capped, so the C-MOVE
+        # as a whole is needed to find the others
+        if not fetch.received or not fetch.received.keys() <= fetch.image_uids.keys():
+            return True
+        image_count = len(fetch.image_uids)
+        missing = len(fetch.missing_images)
+        if missing and not (
+            settings.C_MOVE_REFETCH_ATTEMPTS
+            and 100 * missing / image_count <= settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT
+        ):
+            return True
+        # The images an earlier attempt took are not replayed, so only what the PACS reports as
+        # sent could show that the list is capped. Without the C-MOVE, the series' image counts
+        # must confirm it.
+        if not fetch.query.get("SOPInstanceUID") and not self._image_list_counted(fetch):
+            return True
+        logger.info(
+            "%d of %d requested images of study %s were still held by the receiver.",
+            image_count - missing,
+            image_count,
+            study_uid,
+        )
+        return False
+
+    def _image_list_counted(self, fetch: _CMoveFetch) -> bool:
+        """Whether the list holds as many images of each series as the PACS counts."""
+        try:
+            series_counts = self._count_series_images(fetch.query)
+        except DicomError as err:
+            logger.info(
+                "Could not count the images of study %s: %s", fetch.query.StudyInstanceUID, err
+            )
+            return False
+        listed = Counter(fetch.image_uids.values())
+        return bool(series_counts) and all(
+            count is not None and listed[series_uid] >= count
+            for series_uid, count in series_counts.items()
+        )
+
+    def _move(self, fetch: _CMoveFetch) -> None:
+        """Send the C-MOVE and wait until it is known which of its images didn't arrive."""
+        query = fetch.query
+        fetch.reported = self.dimse_connector.send_c_move(
+            query,
+            settings.RECEIVER_AE_TITLE,
+            last_activity=lambda: fetch.last_received_at,
+        )
+        if fetch.image_uids and (fetch.reported or 0) > len(fetch.image_uids):
+            logger.warning(
+                "The IMAGE-level C-FIND of %s listed %d images of study %s, but its C-MOVE "
+                "sent %d. Its C-FIND results may be capped (see the image level find support "
+                "of the server).",
+                self.server.ae_title,
+                len(fetch.image_uids),
+                query.StudyInstanceUID,
+                fetch.reported,
+            )
+        series_uid = query.get("SeriesInstanceUID")
+        if fetch.reported is not None and series_uid in fetch.series_counts:
+            # What the PACS sent of the series counts once it is more than the series' count,
+            # a lower one only after a re-fetch (the first C-MOVE may have failed in part only
+            # for a while)
+            count = fetch.series_counts[series_uid]
+            if count is None or fetch.reported > count:
+                fetch.series_counts[series_uid] = fetch.reported
+
+        # Images that are neither listed nor counted are only waited for until the receiver
+        # confirmed what it got. Without a count of the PACS, these include those a capped list
+        # misses. Otherwise the confirmation is only waited for while images are missing, as it
+        # comes behind the receiver's backlog of every study.
+        if not fetch.image_uids or fetch.reported is None:
+            self._sync_with_receiver(fetch, str(next(fetch.tokens)), stop_when_complete=False)
+        if not fetch.image_uids:
+            if fetch.reported is None and all(c is None for c in fetch.series_counts.values()):
+                logger.info(
+                    "The completeness of study %s can't be checked beyond an image per series, "
+                    "as %s reports neither image counts nor C-MOVE sub-operations.",
+                    query.StudyInstanceUID,
+                    self.server.ae_title,
+                )
+
+        self._wait_for_delivery(fetch)
+
+    def _refetch(self, fetch: _CMoveFetch) -> None:
+        # Listed images are requested again one by one, counted ones with their series. Images
+        # that are neither are unknown.
+        for _ in range(settings.C_MOVE_REFETCH_ATTEMPTS):
+            if not fetch.receiving():
+                return
+            if fetch.missing_images:
+                self._refetch_missing_images(fetch)
+            elif fetch.short_series():
+                self._refetch_short_series(fetch)
+            else:
+                return
+            self._wait_for_delivery(fetch)
+
+    def _refetch_missing_images(self, fetch: _CMoveFetch) -> None:
         # The images are the same a SERIES or STUDY level C-MOVE sends (one C-STORE each),
         # but every C-MOVE costs the PACS a query resolution and its own association to the
         # receiver. Many of them in a row can strain a PACS (association limits, empty
         # SUCCESS responses under rapid association requests, see DimseConnector). So they
         # share one association, are not retried (the re-fetch rounds are the retries) and
         # a lost association ends the round, leaving it to the task retry.
+        query = fetch.query
         logger.info(
             "Fetching %d missing images of study %s again.",
-            len(missing_images),
+            len(fetch.missing_images),
             query.StudyInstanceUID,
         )
 
         def image_queries() -> Iterator[QueryDataset]:
             # A copy, as the consumer thread removes images that arrive meanwhile
-            for image_uid, series_uid in missing_images.copy().items():
-                if receiving_errors or consume_future.done():
+            for image_uid, series_uid in fetch.missing_images.copy().items():
+                if not fetch.receiving():
                     return
-                if image_uid in missing_images:
+                if image_uid in fetch.missing_images:
                     # Requested again, so its arrival is expected and not late
-                    missing_at_sync.discard(image_uid)
+                    fetch.missing_at_sync.discard(image_uid)
                     yield QueryDataset.create(
                         QueryRetrieveLevel="IMAGE",
                         PatientID=query.PatientID,
@@ -784,22 +940,42 @@ class DicomOperator:
         self.dimse_connector.send_c_move_batch(
             image_queries(),
             settings.RECEIVER_AE_TITLE,
-            last_activity=lambda: last_received_at[0],
+            last_activity=lambda: fetch.last_received_at,
         )
 
-    def _wait_for_delivery(
-        self,
-        study_uid: str,
-        image_uids: dict[str, str],
-        missing_images: dict[str, str],
-        last_image_at: list[float],
-        last_received_at: list[float],
-        sync_requests: queue.SimpleQueue[str],
-        synced_tokens: set[str],
-        tokens: Iterator[int],
-        consume_future: Future[None],
-        receiving_errors: list[Exception],
-    ) -> None:
+    def _refetch_short_series(self, fetch: _CMoveFetch) -> None:
+        # Like the IMAGE-level re-fetch (see there), but one SERIES-level C-MOVE for each series
+        # with images missing. What the PACS reports as sent then counts for that series, as
+        # its image count may include images it can't send.
+        query = fetch.query
+        series_uids = list(fetch.short_series())
+        logger.info(
+            "Fetching %d series of study %s again, as images of them are missing.",
+            len(series_uids),
+            query.StudyInstanceUID,
+        )
+
+        def series_queries() -> Iterator[QueryDataset]:
+            for series_uid in series_uids:
+                if not fetch.receiving():
+                    return
+                yield QueryDataset.create(
+                    QueryRetrieveLevel="SERIES",
+                    PatientID=query.PatientID,
+                    StudyInstanceUID=query.StudyInstanceUID,
+                    SeriesInstanceUID=series_uid,
+                )
+
+        reported = self.dimse_connector.send_c_move_batch(
+            series_queries(),
+            settings.RECEIVER_AE_TITLE,
+            last_activity=lambda: fetch.last_received_at,
+        )
+        for series_uid, count in zip(series_uids, reported):
+            if count is not None:
+                fetch.series_counts[series_uid] = count
+
+    def _wait_for_delivery(self, fetch: _CMoveFetch) -> None:
         """Wait until it is known which images of the C-MOVE operations didn't arrive.
 
         The receiver confirms when it has forwarded everything it got before our sync request,
@@ -811,118 +987,93 @@ class DicomOperator:
         for a slow callback.
         """
 
-        def received() -> int:
-            return len(image_uids) - len(missing_images)
-
         received_before: int | None = None
-        while missing_images and not receiving_errors and not consume_future.done():
-            synced_at = self._sync_with_receiver(
-                study_uid,
-                str(next(tokens)),
-                missing_images,
-                last_image_at,
-                last_received_at,
-                sync_requests,
-                synced_tokens,
-                consume_future,
-                receiving_errors,
-            )
-            if synced_at is None or not missing_images:
+        while fetch.missing_count() and fetch.receiving():
+            synced_at = self._sync_with_receiver(fetch, str(next(fetch.tokens)))
+            if synced_at is None or not fetch.missing_count():
                 return
 
-            if received_before is not None and received() == received_before:
+            if received_before is not None and len(fetch.received) == received_before:
                 logger.info(
                     "%d images of study %s did not arrive within %d s after the receiver "
                     "confirmed the delivery.",
-                    len(missing_images),
-                    study_uid,
+                    fetch.missing_count(),
+                    fetch.query.StudyInstanceUID,
                     settings.C_MOVE_DOWNLOAD_TIMEOUT,
                 )
                 return
 
-            received_before = received()
-            self._wait_for_late_images(
-                synced_at,
-                missing_images,
-                last_image_at,
-                consume_future,
-                receiving_errors,
-            )
+            received_before = len(fetch.received)
+            self._wait_for_late_images(fetch, synced_at)
 
     def _sync_with_receiver(
         self,
-        study_uid: str,
+        fetch: _CMoveFetch,
         token: str,
-        missing_images: dict[str, str],
-        last_image_at: list[float],
-        last_received_at: list[float],
-        sync_requests: queue.SimpleQueue[str],
-        synced_tokens: set[str],
-        consume_future: Future[None],
-        receiving_errors: list[Exception],
+        stop_when_complete: bool = True,
+        request: bool = True,
     ) -> float | None:
         """Wait for the receiver to confirm the sync request with this token.
 
-        Returns when it was confirmed, or None if there is nothing to wait for anymore.
+        Returns when it was confirmed, or None if there is nothing to wait for anymore. Without
+        `request`, the receiver confirms the token on its own, as the replay after subscribing.
         """
-        sync_requests.put(token)
+        if request:
+            fetch.sync_requests.put(token)
         requested_at = time.monotonic()
-        while missing_images and not receiving_errors and not consume_future.done():
-            if token in synced_tokens:
+        while (fetch.missing_count() or not stop_when_complete) and fetch.receiving():
+            if token in fetch.synced_tokens:
                 return time.monotonic()
 
             # Every image of this fetch received meanwhile, duplicates too, was queued before
             # the confirmation, so it brings the confirmation closer
-            idle_time = time.monotonic() - max(last_image_at[0], last_received_at[0], requested_at)
+            idle_time = time.monotonic() - max(
+                fetch.last_image_at, fetch.last_received_at, requested_at
+            )
             if idle_time > settings.C_MOVE_SYNC_TIMEOUT:
                 raise RetriableDicomError(
-                    f"The DICOM receiver did not confirm the delivery of study {study_uid} in time."
+                    "The DICOM receiver did not confirm the delivery of study "
+                    f"{fetch.query.StudyInstanceUID} in time."
                 )
             time.sleep(0.1)
         return None
 
-    def _wait_for_late_images(
-        self,
-        synced_at: float,
-        missing_images: dict[str, str],
-        last_image_at: list[float],
-        consume_future: Future[None],
-        receiving_errors: list[Exception],
-    ) -> None:
-        while missing_images and not receiving_errors and not consume_future.done():
-            idle_time = time.monotonic() - max(last_image_at[0], synced_at)
+    def _wait_for_late_images(self, fetch: _CMoveFetch, synced_at: float) -> None:
+        while fetch.missing_count() and fetch.receiving():
+            idle_time = time.monotonic() - max(fetch.last_image_at, synced_at)
             if idle_time > settings.C_MOVE_DOWNLOAD_TIMEOUT:
                 return
             time.sleep(0.1)
 
-    def _check_images_received(
-        self,
-        study_uid: str,
-        image_uids: dict[str, str],
-        missing_images: dict[str, str],
-        delivery_broken: bool,
-    ) -> None:
-        if not missing_images:
+    def _check_images_received(self, fetch: _CMoveFetch, delivery_broken: bool) -> None:
+        missing_count = fetch.missing_count()
+        if not missing_count:
             return
 
-        if len(missing_images) == len(image_uids):
+        study_uid = fetch.query.StudyInstanceUID
+        if not fetch.received:
             logger.error("No images of study %s received.", study_uid)
             raise RetriableDicomError("Failed to fetch all images with C-MOVE.")
 
+        expected_count = fetch.expected_count()
         logger.warning(
-            "These images of study %s were not received: %s",
+            "%d of %d images of study %s were not received: %s",
+            missing_count,
+            expected_count,
             study_uid,
-            ", ".join(missing_images),
+            ", ".join(fetch.missing_images) or "unknown which ones",
         )
 
         if delivery_broken:
             raise RetriableDicomError(
-                f"{len(missing_images)} of {len(image_uids)} images of study {study_uid} "
+                f"{missing_count} of {expected_count} images of study {study_uid} "
                 "could not be fetched with C-MOVE, too many to fetch them again one by one."
             )
 
         if settings.C_MOVE_FAIL_ON_INCOMPLETE:
-            raise IncompleteFetchError(study_uid, list(missing_images), len(image_uids))
+            raise IncompleteFetchError(
+                study_uid, missing_count, expected_count, list(fetch.missing_images)
+            )
 
         self.logs.append(
             {
@@ -933,20 +1084,10 @@ class DicomOperator:
         )
 
     def _consume_from_receiver(
-        self,
-        study_uid: str,
-        image_uids: dict[str, str],
-        missing_images: dict[str, str],
-        last_image_at: list[float],
-        last_received_at: list[float],
-        callback: Callable[[Dataset], None],
-        subscribed_event: threading.Event,
-        stop_consumer_event: threading.Event,
-        receiving_errors: list[Exception],
-        sync_requests: queue.SimpleQueue[str],
-        synced_tokens: set[str],
-        missing_at_sync: set[str],
+        self, fetch: _CMoveFetch, callback: Callable[[Dataset], None]
     ) -> None:
+        study_uid = fetch.query.StudyInstanceUID
+
         async def consume():
             late_logged = False
 
@@ -961,15 +1102,16 @@ class DicomOperator:
             async def handle_received_file(filename: str, metadata: Metadata):
                 nonlocal late_logged
                 image_uid = metadata["SOPInstanceUID"]
-                if image_uid in image_uids:
-                    last_received_at[0] = time.monotonic()
+                in_scope = fetch.in_scope(metadata)
+                if in_scope:
+                    fetch.last_received_at = time.monotonic()
 
                 try:
-                    # Duplicates and images of other fetches of the same study are ignored
+                    # Duplicates and images of other series of a series fetch are ignored
                     # and must not keep the wait for the missing images alive.
-                    if image_uid in missing_images:
-                        if image_uid in missing_at_sync:
-                            missing_at_sync.discard(image_uid)
+                    if in_scope and image_uid not in fetch.received:
+                        if image_uid in fetch.missing_at_sync:
+                            fetch.missing_at_sync.discard(image_uid)
                             if not late_logged:
                                 late_logged = True
                                 logger.info(
@@ -979,15 +1121,16 @@ class DicomOperator:
                                     image_uid,
                                     study_uid,
                                 )
-                        last_image_at[0] = time.monotonic()
+                        fetch.last_image_at = time.monotonic()
                         # Good to know, exceptions will be propagated by asyncio.to_thread
                         await asyncio.to_thread(read_and_handle_image, filename)
                         # Only removed once handed over, so that the image doesn't count as
                         # received while it is still processed.
-                        del missing_images[image_uid]
-                        last_image_at[0] = time.monotonic()
+                        fetch.received[image_uid] = metadata.get("SeriesInstanceUID")
+                        fetch.missing_images.pop(image_uid, None)
+                        fetch.last_image_at = time.monotonic()
                 except Exception as err:
-                    receiving_errors.append(err)
+                    fetch.receiving_errors.append(err)
                 finally:
                     await async_os.remove(filename)
 
@@ -996,17 +1139,22 @@ class DicomOperator:
                 return False
 
             def handle_synced(token: str):
-                # The snapshot comes first, as the main thread acts as soon as it sees the token
-                missing_at_sync.clear()
-                missing_at_sync.update(missing_images)
-                synced_tokens.add(token)
+                # The snapshot comes first, as the main thread acts as soon as it sees the token.
+                # The confirmed replay of the receiver precedes any C-MOVE, so images missing
+                # then are still to come.
+                if token != REPLAY_SYNC_TOKEN:
+                    fetch.missing_at_sync.clear()
+                    fetch.missing_at_sync.update(fetch.missing_images)
+                fetch.synced_tokens.add(token)
 
             subscribe_task = asyncio.create_task(
                 file_transmit.subscribe(
                     study_uid,
                     handle_received_file,
-                    subscribed_handler=subscribed_event.set,
+                    subscribed_handler=fetch.subscribed.set,
                     synced_handler=handle_synced,
+                    # So that the receiver replays only the images of the requested series
+                    scope=fetch.query.get("SeriesInstanceUID"),
                 )
             )
 
@@ -1015,10 +1163,10 @@ class DicomOperator:
 
                 # Not sent once the subscription ended, as then nothing is missing anymore or
                 # the broken connection is reported below
-                while not sync_requests.empty():
-                    await file_transmit.request_sync(sync_requests.get())
+                while not fetch.sync_requests.empty():
+                    await file_transmit.request_sync(fetch.sync_requests.get())
 
-                if stop_consumer_event.is_set():
+                if fetch.stop_consumer.is_set():
                     subscribe_task.cancel()
                     break
 
@@ -1026,7 +1174,7 @@ class DicomOperator:
                     if err := subscribe_task.exception():
                         error = RetriableDicomError("Connection to the DICOM receiver failed.")
                         error.__cause__ = err
-                        receiving_errors.append(error)
+                        fetch.receiving_errors.append(error)
                     break
 
         asyncio.run(consume(), debug=settings.DEBUG)
