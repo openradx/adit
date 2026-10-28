@@ -618,6 +618,11 @@ class DicomOperator:
         # When the consumer last received an expected image
         last_image_at = [time.monotonic()]
 
+        # When the consumer last received any image of this fetch. Duplicates count too, as a
+        # PACS sends the whole study again when a C-MOVE is retried, but images of other
+        # fetches of the study don't.
+        last_received_at = [time.monotonic()]
+
         # Sync requests the consumer sends to the receiver, the tokens it confirmed, and the
         # images still missing at the last confirmation
         sync_requests: queue.SimpleQueue[str] = queue.SimpleQueue()
@@ -641,8 +646,10 @@ class DicomOperator:
             consume_future = executor.submit(
                 self._consume_from_receiver,
                 query.StudyInstanceUID,
+                image_uids,
                 missing_images,
                 last_image_at,
+                last_received_at,
                 callback,
                 subscribed_event,
                 stop_consumer_event,
@@ -656,12 +663,17 @@ class DicomOperator:
                 # Images the PACS sends before the receiver knows about us would be discarded
                 self._wait_for_subscription(subscribed_event, consume_future)
 
-                self.dimse_connector.send_c_move(query, settings.RECEIVER_AE_TITLE)
+                self.dimse_connector.send_c_move(
+                    query,
+                    settings.RECEIVER_AE_TITLE,
+                    last_activity=lambda: last_received_at[0],
+                )
                 self._wait_for_delivery(
                     query.StudyInstanceUID,
                     image_uids,
                     missing_images,
                     last_image_at,
+                    last_received_at,
                     sync_requests,
                     synced_tokens,
                     tokens,
@@ -682,13 +694,19 @@ class DicomOperator:
                     if not missing_images or receiving_errors or consume_future.done():
                         break
                     self._refetch_missing_images(
-                        query, missing_images, consume_future, receiving_errors, missing_at_sync
+                        query,
+                        missing_images,
+                        last_received_at,
+                        consume_future,
+                        receiving_errors,
+                        missing_at_sync,
                     )
                     self._wait_for_delivery(
                         query.StudyInstanceUID,
                         image_uids,
                         missing_images,
                         last_image_at,
+                        last_received_at,
                         sync_requests,
                         synced_tokens,
                         tokens,
@@ -730,6 +748,7 @@ class DicomOperator:
         self,
         query: QueryDataset,
         missing_images: dict[str, str],
+        last_received_at: list[float],
         consume_future: Future[None],
         receiving_errors: list[Exception],
         missing_at_sync: set[str],
@@ -762,7 +781,11 @@ class DicomOperator:
                         SOPInstanceUID=image_uid,
                     )
 
-        self.dimse_connector.send_c_move_batch(image_queries(), settings.RECEIVER_AE_TITLE)
+        self.dimse_connector.send_c_move_batch(
+            image_queries(),
+            settings.RECEIVER_AE_TITLE,
+            last_activity=lambda: last_received_at[0],
+        )
 
     def _wait_for_delivery(
         self,
@@ -770,6 +793,7 @@ class DicomOperator:
         image_uids: dict[str, str],
         missing_images: dict[str, str],
         last_image_at: list[float],
+        last_received_at: list[float],
         sync_requests: queue.SimpleQueue[str],
         synced_tokens: set[str],
         tokens: Iterator[int],
@@ -797,6 +821,7 @@ class DicomOperator:
                 str(next(tokens)),
                 missing_images,
                 last_image_at,
+                last_received_at,
                 sync_requests,
                 synced_tokens,
                 consume_future,
@@ -830,6 +855,7 @@ class DicomOperator:
         token: str,
         missing_images: dict[str, str],
         last_image_at: list[float],
+        last_received_at: list[float],
         sync_requests: queue.SimpleQueue[str],
         synced_tokens: set[str],
         consume_future: Future[None],
@@ -845,7 +871,9 @@ class DicomOperator:
             if token in synced_tokens:
                 return time.monotonic()
 
-            idle_time = time.monotonic() - max(last_image_at[0], requested_at)
+            # Every image of this fetch received meanwhile, duplicates too, was queued before
+            # the confirmation, so it brings the confirmation closer
+            idle_time = time.monotonic() - max(last_image_at[0], last_received_at[0], requested_at)
             if idle_time > settings.C_MOVE_SYNC_TIMEOUT:
                 raise RetriableDicomError(
                     f"The DICOM receiver did not confirm the delivery of study {study_uid} in time."
@@ -907,8 +935,10 @@ class DicomOperator:
     def _consume_from_receiver(
         self,
         study_uid: str,
+        image_uids: dict[str, str],
         missing_images: dict[str, str],
         last_image_at: list[float],
+        last_received_at: list[float],
         callback: Callable[[Dataset], None],
         subscribed_event: threading.Event,
         stop_consumer_event: threading.Event,
@@ -931,6 +961,8 @@ class DicomOperator:
             async def handle_received_file(filename: str, metadata: Metadata):
                 nonlocal late_logged
                 image_uid = metadata["SOPInstanceUID"]
+                if image_uid in image_uids:
+                    last_received_at[0] = time.monotonic()
 
                 try:
                     # Duplicates and images of other fetches of the same study are ignored
@@ -959,7 +991,9 @@ class DicomOperator:
                 finally:
                     await async_os.remove(filename)
 
-                return not missing_images
+                # Subscribed until the fetch ends, as images of the study the PACS still sends
+                # keep the C-MOVE alive (see send_c_move's last_activity)
+                return False
 
             def handle_synced(token: str):
                 # The snapshot comes first, as the main thread acts as soon as it sees the token

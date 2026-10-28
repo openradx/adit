@@ -1,6 +1,9 @@
 import inspect
 import logging
+import threading
+import time
 from collections.abc import Callable, Iterable, Iterator
+from contextlib import suppress
 from functools import wraps
 from os import PathLike
 from pathlib import Path
@@ -339,11 +342,22 @@ class DimseConnector:
 
     @retry_dimse_retrieve
     @connect_to_server("C-MOVE")
-    def send_c_move(self, query: QueryDataset, dest_aet: str, msg_id: int = 1) -> None:
-        self._send_c_move(query, dest_aet, msg_id)
+    def send_c_move(
+        self,
+        query: QueryDataset,
+        dest_aet: str,
+        msg_id: int = 1,
+        last_activity: Callable[[], float] | None = None,
+    ) -> None:
+        self._send_c_move(query, dest_aet, msg_id, last_activity)
 
     @connect_to_server("C-MOVE")
-    def send_c_move_batch(self, queries: Iterable[QueryDataset], dest_aet: str) -> None:
+    def send_c_move_batch(
+        self,
+        queries: Iterable[QueryDataset],
+        dest_aet: str,
+        last_activity: Callable[[], float] | None = None,
+    ) -> None:
         """Send several C-MOVEs over one association without retrying them.
 
         A failing C-MOVE is only logged as long as the association survives it (e.g. a
@@ -353,19 +367,25 @@ class DimseConnector:
             # Message IDs are 16 bit
             msg_id = index % 0xFFFF + 1
             try:
-                self._send_c_move(query, dest_aet, msg_id)
+                self._send_c_move(query, dest_aet, msg_id, last_activity)
             except DicomError as err:
-                # After an A-ABORT of the peer the association may still count as alive
-                # for a moment.
+                # After an A-ABORT or A-RELEASE of the peer the thread of the association may
+                # still be alive for a moment, but it is no longer established.
                 if isinstance(err, AssociationLostError) or not (
-                    self.assoc and self.assoc.is_alive()
+                    self.assoc and self.assoc.is_established
                 ):
                     raise RetriableDicomError(
                         "Lost the association while sending C-MOVEs."
                     ) from err
                 logger.warning("C-MOVE failed, continuing with the next one: %s", err)
 
-    def _send_c_move(self, query: QueryDataset, dest_aet: str, msg_id: int) -> None:
+    def _send_c_move(
+        self,
+        query: QueryDataset,
+        dest_aet: str,
+        msg_id: int,
+        last_activity: Callable[[], float] | None,
+    ) -> None:
         logger.debug("Sending C-MOVE with query:\n%s", query)
 
         # Transfer of only one study at a time is supported by ADIT
@@ -383,10 +403,76 @@ class DimseConnector:
                 "No valid Query/Retrieve Information Model for C-MOVE could be selected."
             )
 
-        assert self.assoc and self.assoc.is_alive()
+        if not (self.assoc and self.assoc.is_established):
+            raise AssociationLostError("The association was lost before sending the C-MOVE.")
         responses = self.assoc.send_c_move(query.dataset, dest_aet, query_model, msg_id)
 
-        self._handle_get_and_move_responses(responses, "C-MOVE")
+        if last_activity is None or self.dimse_timeout is None:
+            self._handle_get_and_move_responses(responses, "C-MOVE")
+            return
+
+        # Pending responses are optional, so a PACS may send none while its images are
+        # flowing. Instead of the DIMSE timeout, a guard aborts the C-MOVE once neither a
+        # response nor any activity (e.g. a received image) came for that long.
+        assoc = self.assoc
+        last_response_at = [time.monotonic()]
+        move_done = threading.Event()
+        guard_fired = threading.Event()
+
+        def stamped_responses() -> Iterator[tuple[Dataset, Dataset | None]]:
+            for response in responses:
+                last_response_at[0] = time.monotonic()
+                yield response
+
+        guard = threading.Thread(
+            target=self._guard_c_move,
+            args=(assoc, last_response_at, last_activity, move_done, guard_fired),
+            name="c-move-guard",
+            daemon=True,
+        )
+        assoc.dimse_timeout = None
+        guard.start()
+        try:
+            self._handle_get_and_move_responses(stamped_responses(), "C-MOVE")
+        finally:
+            move_done.set()
+            guard.join()
+            if guard_fired.is_set():
+                # The final response may have come just as the guard fired. Its signal must not
+                # abort the next C-MOVE on the association then.
+                msg_queue = assoc.dimse.msg_queue
+                with msg_queue.mutex, suppress(ValueError):
+                    msg_queue.queue.remove((None, None))
+            assoc.dimse_timeout = self.dimse_timeout
+
+    def _guard_c_move(
+        self,
+        assoc: Association,
+        last_response_at: list[float],
+        last_activity: Callable[[], float],
+        move_done: threading.Event,
+        guard_fired: threading.Event,
+    ) -> None:
+        assert self.dimse_timeout is not None
+        try:
+            while not move_done.wait(0.1):
+                idle_time = time.monotonic() - max(last_response_at[0], last_activity())
+                if idle_time > self.dimse_timeout:
+                    logger.warning(
+                        "No C-MOVE response and no image from %s for %d s, aborting the C-MOVE.",
+                        self.server.ae_title,
+                        self.dimse_timeout,
+                    )
+                    break
+            else:
+                return
+        except Exception:
+            logger.exception("Watching the C-MOVE of %s failed, aborting it.", self.server.ae_title)
+
+        # What an expired DIMSE timeout delivers: pynetdicom ends the wait for the next response
+        # and aborts the association. During a C-MOVE only that wait reads the queue.
+        guard_fired.set()
+        assoc.dimse.msg_queue.put((None, None))
 
     @retry_dimse_store
     @connect_to_server("C-STORE")
