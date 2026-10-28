@@ -793,7 +793,8 @@ class DicomOperator:
 
         The receiver holds images of the study, e.g. those an earlier attempt didn't get as its
         worker restarted. With the list, the PACS is then only asked for the others: one by one
-        if they are few enough to be re-fetched, otherwise with the C-MOVE as a whole.
+        if they are few enough to be re-fetched and the PACS counts no more images per series
+        than listed, otherwise with the C-MOVE as a whole.
         """
         if not fetch.image_uids:
             return True
@@ -820,6 +821,11 @@ class DicomOperator:
             and 100 * missing / image_count <= settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT
         ):
             return True
+        # The images an earlier attempt took are not replayed, so only what the PACS reports as
+        # sent could show that the list is capped. Without the C-MOVE, the series' image counts
+        # must confirm it.
+        if not fetch.query.get("SOPInstanceUID") and not self._image_list_counted(fetch):
+            return True
         logger.info(
             "%d of %d requested images of study %s were still held by the receiver.",
             image_count - missing,
@@ -827,6 +833,21 @@ class DicomOperator:
             study_uid,
         )
         return False
+
+    def _image_list_counted(self, fetch: _CMoveFetch) -> bool:
+        """Whether the list holds as many images of each series as the PACS counts."""
+        try:
+            series_counts = self._count_series_images(fetch.query)
+        except DicomError as err:
+            logger.info(
+                "Could not count the images of study %s: %s", fetch.query.StudyInstanceUID, err
+            )
+            return False
+        listed = Counter(fetch.image_uids.values())
+        return bool(series_counts) and all(
+            count is not None and listed[series_uid] >= count
+            for series_uid, count in series_counts.items()
+        )
 
     def _move(self, fetch: _CMoveFetch) -> None:
         """Send the C-MOVE and wait until it is known which of its images didn't arrive."""

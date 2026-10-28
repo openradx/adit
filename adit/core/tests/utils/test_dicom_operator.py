@@ -7,6 +7,7 @@ import socket
 import struct
 import threading
 import time
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from time import sleep
@@ -652,6 +653,7 @@ def _setup_refetch(
     images: dict[str, str | None] | None = None,
     on_sync: Callable[[FileTransmitSession, str], Awaitable[bool]] | None = None,
     replayed: list[str | None] | None = None,
+    series_counts: dict[str | None, int | None] | None = None,
 ):
     """The sample image and `images` (by default B and C) are expected, each image maps to
     its series (None for the series of the sample image). The first C-MOVE only delivers
@@ -665,7 +667,9 @@ def _setup_refetch(
     grace after the first sync was answered, as from a PACS that sends after its final C-MOVE
     response. With "slow sync", the first sync is answered only after 1.5 graces without any
     image. `on_sync` is passed to the transmit server, which replays the `replayed` images
-    (None for the sample image)."""
+    (None for the sample image). The SERIES-level C-FIND counts the images of each series as
+    listed, unless `series_counts` sets the count of a series (None for the series of the sample
+    image) or omits it (None as count)."""
     dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(settings, mocker, port)
     # Most images are missing after the first C-MOVE
     settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 100
@@ -676,8 +680,15 @@ def _setup_refetch(
 
     def send_c_find(query_ds: Dataset, *args, **kwargs):
         if query_ds.QueryRetrieveLevel == "SERIES":
-            series_uids = dict.fromkeys(image_series.values())
-            data = [{"SeriesInstanceUID": uid, "Modality": ds.Modality} for uid in series_uids]
+            counts: dict[str, int | None] = dict(Counter(image_series.values()))
+            for series_uid, count in (series_counts or {}).items():
+                counts[series_uid or ds.SeriesInstanceUID] = count
+            data = [
+                {"SeriesInstanceUID": uid, "Modality": ds.Modality}
+                | ({} if count is None else {"NumberOfSeriesRelatedInstances": count})
+                for uid, count in counts.items()
+                if query_ds.get("SeriesInstanceUID") in (None, "", uid)
+            ]
         else:
             data = [
                 {"SOPInstanceUID": image_uid}
@@ -833,6 +844,35 @@ def test_c_move_skipped_when_the_receiver_replays_every_image(
     send_c_move.assert_not_called()
 
 
+@pytest.mark.parametrize("series_count", [4, None], ids=["capped list", "no count"])
+@pytest.mark.django_db
+def test_c_move_not_skipped_when_the_series_count_doesnt_confirm_the_list(
+    settings: Settings, mocker: MockerFixture, series_count: int | None
+):
+    # Arrange: the receiver replays every listed image, but the series holds more images than
+    # the list (its IMAGE-level C-FIND is capped), or its count is unknown
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings,
+        mocker,
+        17940,
+        deliver=set(),
+        replayed=[None, IMAGE_B, IMAGE_C],
+        series_counts={None: series_count},
+    )
+    send_c_move = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+        )
+    finally:
+        stop()
+
+    # Assert: only the C-MOVE as a whole can show which images the list misses
+    assert [call.args[0].QueryRetrieveLevel for call in send_c_move.call_args_list] == ["SERIES"]
+
+
 @pytest.mark.django_db
 def test_c_move_refetches_only_what_the_replay_missed(settings: Settings, mocker: MockerFixture):
     # Arrange: the receiver still holds two of the three images
@@ -897,9 +937,17 @@ def test_c_move_waits_for_a_long_replay(settings: Settings, mocker: MockerFixtur
         settings, mocker, 17948
     )
     settings.C_MOVE_SYNC_TIMEOUT = 1
-    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
-        [{"SOPInstanceUID": uid} for uid in [ds.SOPInstanceUID, IMAGE_B, IMAGE_C]]
-    )
+
+    def send_c_find(query_ds: Dataset, *args, **kwargs):
+        if query_ds.QueryRetrieveLevel == "SERIES":
+            data = [
+                {"SeriesInstanceUID": ds.SeriesInstanceUID, "NumberOfSeriesRelatedInstances": 3}
+            ]
+        else:
+            data = [{"SOPInstanceUID": uid} for uid in [ds.SOPInstanceUID, IMAGE_B, IMAGE_C]]
+        return DicomTestHelper.create_successful_c_find_responses(data)
+
+    association_mock.send_c_find.side_effect = send_c_find
     transmit_server, loop = _start_transmit_server(
         17948,
         replayed=[
