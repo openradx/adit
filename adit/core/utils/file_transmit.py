@@ -2,12 +2,13 @@ import asyncio
 import json
 import logging
 import struct
+import tempfile
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from os import PathLike
 
 import aiofiles
-from aiofiles import os, tempfile
+from aiofiles import os
 
 BUFFER_SIZE = 64 * 1024  # 64kb
 
@@ -210,28 +211,35 @@ class FileTransmitClient:
                 metadata_bytes = await reader.readline()
                 metadata: Metadata = json.loads(metadata_bytes.decode().strip())
 
-                async with tempfile.NamedTemporaryFile(delete=False) as f:
+                # Created and opened without an await, so that wherever the subscription is
+                # cancelled the file is closed and its name is known, as it may contain
+                # patient data
+                fd, file_name = tempfile.mkstemp()
+                try:
+                    file = open(fd, "wb")
                     try:
                         remaining_bytes = file_size
                         while remaining_bytes > 0:
                             chunk_size = min(remaining_bytes, BUFFER_SIZE)
                             # Raises IncompleteReadError if the server goes away mid-file
                             data = await reader.readexactly(chunk_size)
-                            await f.write(data)
+                            await asyncio.to_thread(file.write, data)
                             remaining_bytes -= len(data)
-                    except BaseException:
-                        # Also on cancellation, as the partial file may contain patient data.
-                        # A failing removal must not replace the original error.
-                        with suppress(OSError):
-                            await os.remove(f.name)  # type: ignore
-                        raise
+                    finally:
+                        # Goes on in its thread if cancelled meanwhile
+                        await asyncio.to_thread(file.close)
+                except BaseException:
+                    # A failing removal must not replace the original error
+                    with suppress(OSError):
+                        await os.remove(file_name)
+                    raise
 
                 # The file handler can report that no further files are needed by
                 # returning True which stops reading further data from the server.
                 finished = (
-                    await file_received_handler(f.name, metadata)  # type: ignore
+                    await file_received_handler(file_name, metadata)
                     if asyncio.iscoroutinefunction(file_received_handler)
-                    else file_received_handler(f.name, metadata)  # type: ignore
+                    else file_received_handler(file_name, metadata)
                 )
                 if finished:
                     break

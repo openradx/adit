@@ -210,6 +210,60 @@ async def test_partial_file_is_removed_when_subscription_is_cancelled_mid_file(
 
 
 @pytest.mark.asyncio
+async def test_received_file_is_removed_when_subscription_is_cancelled_while_closing_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    # Arrange: closing the received file takes a while, as it runs in a thread
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    closing = asyncio.Event()
+    to_thread = asyncio.to_thread
+
+    async def slow_to_thread(func, /, *args, **kwargs):
+        if getattr(func, "__name__", None) != "close":
+            return await to_thread(func, *args, **kwargs)
+        # The close goes on in its thread when the waiting task is cancelled
+        closed = asyncio.ensure_future(to_thread(func, *args, **kwargs))
+        closing.set()
+        await asyncio.sleep(0.5)
+        return await closed
+
+    monkeypatch.setattr(asyncio, "to_thread", slow_to_thread)
+
+    async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        await reader.readline()
+        writer.write(SUBSCRIBED_ACK)
+        writer.write(struct.pack("!I", 10))
+        writer.write(b"{}\n")
+        writer.write(b"x" * 10)
+        await writer.drain()
+        await reader.read()
+        writer.close()
+        await writer.wait_closed()
+
+    server = await asyncio.start_server(handle_connection, HOST, PORT)
+    received: list[str] = []
+
+    try:
+        client = FileTransmitClient(HOST, PORT)
+        subscribe_task = asyncio.create_task(
+            client.subscribe("foobar", lambda filename, metadata: received.append(filename))
+        )
+        await asyncio.wait_for(closing.wait(), timeout=5)
+
+        # Act
+        subscribe_task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await subscribe_task
+    finally:
+        server.close()
+        await server.wait_closed()
+
+    # Assert: the complete file never reached the handler, so it must not be left behind
+    assert received == []
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.asyncio
 async def test_publish_file_only_reaches_subscribers_of_the_same_server():
     sample_file = next(Path(f"{settings.BASE_PATH}/samples/dicoms").rglob("*.dcm"))
 
