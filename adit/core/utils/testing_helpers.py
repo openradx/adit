@@ -1,7 +1,8 @@
+import asyncio
 import functools
 import io
 import os
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any
 from unittest.mock import MagicMock, create_autospec
 
@@ -21,6 +22,7 @@ from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import read_dataset
+from adit.core.utils.file_transmit import FileTransmitSession
 
 Response = tuple[Dataset, Dataset | None]
 
@@ -207,3 +209,23 @@ def load_sample_dicoms_metadata(patient_id: str | None = None) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(metadata)
+
+
+def stall_session(session: FileTransmitSession) -> asyncio.Event:
+    """Make the session's writes wait, as for a worker that stops reading, until the returned
+    event is set."""
+    resume = asyncio.Event()
+
+    async def drain():
+        await resume.wait()
+
+    session._writer.drain = drain
+    return resume
+
+
+async def wait_until(condition: Callable[[], bool], timeout: float = 5) -> None:
+    async def poll():
+        while not condition():
+            await asyncio.sleep(0.05)
+
+    await asyncio.wait_for(poll(), timeout)
