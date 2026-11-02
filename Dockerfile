@@ -2,7 +2,7 @@
 # Ideas from https://docs.astral.sh/uv/guides/integration/docker/
 # and https://hynek.me/articles/docker-uv/
 
-FROM python:3.13-bookworm@sha256:a3799099b64fd333f262768c7a64733f6e4edb7bc569813710a100214bdcf278 AS builder-base
+FROM python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e AS builder-base
 
 ENV PYTHONUNBUFFERED=1 \
   PYTHONDONTWRITEBYTECODE=1 \
