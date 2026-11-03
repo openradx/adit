@@ -404,6 +404,23 @@ STORE_SCP_PORT = env.int("STORE_SCP_PORT", 11112)
 FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST", "localhost")
 FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", 14638)
 
+# How long the receiver waits for a worker to take data it sends before it disconnects that
+# worker (e.g. a hung process) and gives up its files. A live worker pauses reading only while it
+# hands over one image.
+FILE_TRANSMIT_WRITE_TIMEOUT = 300  # seconds
+
+# How long the receiver keeps a file no worker took (none subscribed to its study, or the
+# worker went away first), to hand it to the next worker that subscribes to the study, e.g.
+# the retry of a download whose worker restarted. Longer than a task retry waits (up to
+# 240 s). The files are kept in the receiver's temp folder, at most RECEIVER_SPOOL_MAX_SIZE
+# MB (the oldest go first), and are lost when the receiver restarts. 0 for either disables it.
+RECEIVER_SPOOL_TTL = env.int("RECEIVER_SPOOL_TTL", default=600)  # seconds
+RECEIVER_SPOOL_MAX_SIZE = env.int("RECEIVER_SPOOL_MAX_SIZE", default=2048)  # MB
+if RECEIVER_SPOOL_TTL < 0 or RECEIVER_SPOOL_MAX_SIZE < 0:
+    raise ImproperlyConfigured(
+        "RECEIVER_SPOOL_TTL and RECEIVER_SPOOL_MAX_SIZE must not be negative"
+    )
+
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
 # (and directly set the status of the job to PENDING).
@@ -454,8 +471,38 @@ DICOM_EXPLORER_RESULT_LIMIT = 101
 # The timeout in dicom_explorer a DICOM server must respond
 DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 
-# The timeout we wait for images of a C-MOVE download
+# How long images still missing after the receiver confirmed a C-MOVE delivery are waited for
+# while no expected image arrives, before the receiver is asked again, as some PACS send images
+# after their final C-MOVE response
 C_MOVE_DOWNLOAD_TIMEOUT = 30  # seconds
+
+# The timeout we wait for the receiver to register our subscription before sending a C-MOVE
+C_MOVE_SUBSCRIBE_TIMEOUT = 10  # seconds
+
+# How long we wait for the receiver to confirm a C-MOVE delivery while no expected image
+# arrives. Longer than C_MOVE_DOWNLOAD_TIMEOUT, as a backlogged receiver already holds the
+# images and waiting for it costs the PACS nothing.
+C_MOVE_SYNC_TIMEOUT = 120  # seconds
+
+# How often images still missing after a C-MOVE are requested again, one IMAGE-level
+# C-MOVE per image, or one SERIES-level C-MOVE per series with missing images for a server
+# without image level find support (0 disables it). Each of those costs the PACS its own
+# association to the receiver, so it is meant for the few images a C-MOVE missed.
+C_MOVE_REFETCH_ATTEMPTS = env.int("C_MOVE_REFETCH_ATTEMPTS", default=2)
+if C_MOVE_REFETCH_ATTEMPTS < 0:
+    raise ImproperlyConfigured("C_MOVE_REFETCH_ATTEMPTS must not be negative")
+
+# When more than this percentage of the images is missing (0-100), the delivery is broken
+# as a whole: no re-fetch (one C-MOVE per image would only add load), the download fails
+# and is retried later, regardless of C_MOVE_FAIL_ON_INCOMPLETE.
+C_MOVE_REFETCH_MAX_MISSING_PERCENT = env.int("C_MOVE_REFETCH_MAX_MISSING_PERCENT", default=50)
+if not 0 <= C_MOVE_REFETCH_MAX_MISSING_PERCENT <= 100:
+    raise ImproperlyConfigured("C_MOVE_REFETCH_MAX_MISSING_PERCENT must be between 0 and 100")
+
+# Whether a C-MOVE download with images still missing after the re-fetch fails (and is
+# retried as a whole) instead of only logging a warning. A download without any image
+# always fails.
+C_MOVE_FAIL_ON_INCOMPLETE = env.bool("C_MOVE_FAIL_ON_INCOMPLETE", default=True)
 
 # Pebble process timeout for mass transfer tasks. A task processes an entire partition
 # (discovery + export + convert) and can run for hours.

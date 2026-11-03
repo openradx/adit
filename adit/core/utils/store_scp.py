@@ -16,7 +16,8 @@ from .dicom_utils import write_dataset
 
 logger = logging.getLogger(__name__)
 
-FileReceivedHandler = Callable[[str], None]
+# Called with the path of a received file and the AE title the C-STORE came from
+FileReceivedHandler = Callable[[str, str], None]
 
 
 class StoreScp:
@@ -110,15 +111,8 @@ class StoreScp:
         The request is initiated with a C-MOVE request by ADIT itself to
         fetch images from a DICOM server that doesn't support C-GET requests.
         """
-        # We retain the calling AE title in the filename so that we can use it in the
-        # transmitter for the topic.
-        calling_ae = event.assoc.remote["ae_title"]
-        file_prefix = calling_ae + "_"
-
         try:
-            with NamedTemporaryFile(
-                prefix=file_prefix, suffix=".dcm", dir=self._folder, delete=False
-            ) as file:
+            with NamedTemporaryFile(suffix=".dcm", dir=self._folder, delete=False) as file:
                 # There are two ways to save the file. We use the first one and prefer
                 # reliability over speed. (See file history for second method.)
                 # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp
@@ -144,7 +138,7 @@ class StoreScp:
 
         try:
             if self._file_received_handler:
-                self._file_received_handler(file.name)
+                self._file_received_handler(file.name, event.assoc.remote["ae_title"])
         except Exception as err:
             logger.error("Unable to handle received file %s: %s", file.name, err)
             logger.exception(err)
