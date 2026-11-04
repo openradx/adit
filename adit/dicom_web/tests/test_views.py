@@ -19,7 +19,7 @@ The views are async (adrf ``AsyncApiView``) and must be driven with Django's
 
 from collections.abc import AsyncIterator
 from typing import cast
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from adit_radis_shared.accounts.factories import GroupFactory, UserFactory
@@ -169,6 +169,22 @@ class TestQueryStudies:
 
         # ValueError -> ValidationError -> HTTP 400 (views.py:140-142).
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    @pytest.mark.django_db(transaction=True)
+    async def test_reversed_date_range_becomes_400(self):
+        token, server = await setup_user_and_server()
+        fake_qido_find = AsyncMock(return_value=[])
+
+        url = reverse("qido_rs-studies", args=[server.ae_title])
+        with patch("adit.dicom_web.views.qido_find", new=fake_qido_find):
+            response = await AsyncClient().get(
+                f"{url}?StudyDate=20240102-20240101", headers=_auth(token)
+            )
+
+        assert response.status_code == 400
+        assert "is after its end" in response.json()[0]
+        fake_qido_find.assert_not_called()
 
 
 class TestQuerySeries:

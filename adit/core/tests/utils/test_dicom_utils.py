@@ -169,6 +169,78 @@ def test_convert_to_dicom_date_range_with_too_many_parts_raises():
         convert_to_dicom_date("20220101-20220202-20220303")
 
 
+# --- DICOM range matching syntax (PS3.4 C.2.2.2.5) --------------------------
+
+
+@pytest.mark.parametrize(
+    "convert", [convert_to_dicom_date, convert_to_dicom_time, convert_to_dicom_datetime]
+)
+@pytest.mark.parametrize("value", ["", "   ", "-", " - ", (None, None)])
+def test_convert_empty_is_universal_match(convert, value):
+    assert convert(value) == ""
+
+
+def test_convert_strips_whitespace_of_single_value():
+    assert convert_to_dicom_date(" 20220309 ") == "20220309"
+
+
+@pytest.mark.parametrize(
+    "convert, value",
+    [
+        (convert_to_dicom_date, "20220309-"),
+        (convert_to_dicom_date, "-20230831"),
+        (convert_to_dicom_time, "080000-"),
+        (convert_to_dicom_time, "-170000"),
+        (convert_to_dicom_datetime, "20220309080000-"),
+        (convert_to_dicom_datetime, "-20230831230000"),
+    ],
+)
+def test_convert_open_range(convert, value):
+    assert convert(value) == value
+
+
+def test_convert_to_dicom_date_open_range_from_tuple():
+    assert convert_to_dicom_date((date(2022, 3, 9), None)) == "20220309-"
+    assert convert_to_dicom_date((None, date(2023, 8, 31))) == "-20230831"
+
+
+def test_convert_to_dicom_date_single_day_range():
+    assert convert_to_dicom_date((date(2022, 3, 9), date(2022, 3, 9))) == "20220309-20220309"
+
+
+@pytest.mark.parametrize(
+    "convert, value, error",
+    [
+        (convert_to_dicom_date, "20230831-20220309", "Invalid date format"),
+        (convert_to_dicom_date, (date(2023, 8, 31), date(2022, 3, 9)), "Invalid date format"),
+        (convert_to_dicom_time, "230000-080000", "Invalid time format"),
+        (convert_to_dicom_datetime, "20230831230000-20220309080000", "Invalid datetime format"),
+    ],
+)
+def test_convert_reversed_range_raises(convert, value, error):
+    with pytest.raises(ValueError, match=f"{error}.*is after its end"):
+        convert(value)
+
+
+def test_convert_to_dicom_datetime_positive_utc_offset():
+    assert convert_to_dicom_datetime("20220309080000+0100") == "20220309080000+0100"
+    assert (
+        convert_to_dicom_datetime("20220309080000+0100-20220310080000+0100")
+        == "20220309080000+0100-20220310080000+0100"
+    )
+
+
+def test_convert_to_dicom_datetime_negative_utc_offset_raises():
+    # Its "-" separates a range, which then ends in the year 500.
+    with pytest.raises(ValueError, match="is after its end"):
+        convert_to_dicom_datetime("20220309080000-0500")
+
+
+def test_convert_to_dicom_datetime_range_mixing_utc_offset_raises():
+    with pytest.raises(ValueError, match="with and without a UTC offset"):
+        convert_to_dicom_datetime("20220310080000+0100-20220309080000")
+
+
 # --- has_wildcards ----------------------------------------------------------
 
 

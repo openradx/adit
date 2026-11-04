@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 DateRange = tuple[datetime.date | None, datetime.date | None]
 TimeRange = tuple[datetime.time | None, datetime.time | None]
 DateTimeRange = tuple[datetime.datetime | None, datetime.datetime | None]
+DateTimeVR = type[valuerep.DA] | type[valuerep.TM] | type[valuerep.DT]
 
 
 def write_dataset(ds: Dataset, fn: str | bytes | PathLike | BinaryIO) -> None:
@@ -77,69 +78,86 @@ def person_name_to_dicom(value: str, add_wildcards=False) -> str:
     return re.sub(r"\s*,\s*", "^", value)
 
 
+def _parse_date_time_datetime(
+    value: str | datetime.date | datetime.time | datetime.datetime | None,
+    vr_class: DateTimeVR,
+) -> valuerep.DA | valuerep.TM | valuerep.DT | None:
+    """Parse a value, an empty or blank one yields None."""
+    return vr_class(value.strip() if isinstance(value, str) else value)
+
+
 def _build_date_time_datetime_range(
     start: str | datetime.date | datetime.time | datetime.datetime | None,
     end: str | datetime.date | datetime.time | datetime.datetime | None,
-    vr_class: type[valuerep.DA] | type[valuerep.TM] | type[valuerep.DT],
-):
-    start_date = str(vr_class(start)) if start else ""
-    end_date = str(vr_class(end)) if end else ""
-    # No bounds at all means "match anything" — send an empty (universal match)
-    # value rather than a bare "-", which is not a valid DA/TM/DT value and makes
-    # pydicom emit an "Invalid value for VR" warning.
-    if not start_date and not end_date:
-        return ""
-    return f"{start_date}-{end_date}"
-
-
-def _convert_to_dicom_date_time_datetime(
-    value: Any,
-    vr_class: type[valuerep.DA] | type[valuerep.TM] | type[valuerep.DT],
+    vr_class: DateTimeVR,
 ) -> str:
+    start_value = _parse_date_time_datetime(start, vr_class)
+    end_value = _parse_date_time_datetime(end, vr_class)
+
+    # A bare "-" is not a valid range; no bounds at all is a universal match.
+    if start_value is None and end_value is None:
+        return ""
+
+    # PS3.4 C.2.2.2.5 only defines a range whose start is less or equal to its end. A
+    # reversed one is accepted by most SCPs but silently matches nothing.
+    if start_value is not None and end_value is not None:
+        try:
+            is_reversed = start_value > end_value  # type: ignore[operator]
+        except TypeError as err:
+            raise ValueError("Range mixes bounds with and without a UTC offset") from err
+        if is_reversed:
+            raise ValueError(f"Range start {start_value} is after its end {end_value}")
+
+    return "-".join("" if v is None else str(v) for v in (start_value, end_value))
+
+
+def _convert_to_dicom_date_time_datetime(value: Any, vr_class: DateTimeVR) -> str:
     """Convert a value to a DICOM compatible string representation.
 
     The value can be a string already in the DICOM format, but also a
     Python date, time, datetime object or a date, time, datetime range
-    (tuple of two of them).
+    (tuple of two of them). An empty value or range becomes the universal
+    match "", and a range must not end before it starts (PS3.4 C.2.2.2.5).
+    As every "-" of a string separates a range, a DT string must not have
+    a negative UTC offset.
     """
     if isinstance(value, str):
-        if "-" in value:
-            range = [s.strip() for s in value.split("-")]
-            if len(range) != 2:
-                raise ValueError(f"Invalid range: {value}")
-            start, end = range
-            return _build_date_time_datetime_range(start, end, vr_class)
-        else:
-            return str(vr_class(value))
+        parts = [s.strip() for s in value.split("-")]
+        if len(parts) > 2:
+            raise ValueError(f"Invalid range: {value}")
+        if len(parts) == 2:
+            return _build_date_time_datetime_range(parts[0], parts[1], vr_class)
+        value = parts[0]
     elif isinstance(value, tuple):
         start, end = value
         return _build_date_time_datetime_range(start, end, vr_class)
-    else:
-        return str(vr_class(value))
+
+    parsed = _parse_date_time_datetime(value, vr_class)
+    return "" if parsed is None else str(parsed)
 
 
 def convert_to_dicom_date(value: str | datetime.date | DateRange) -> str:
     """Convert a date or date range to a DICOM compatible string representation."""
     try:
         return _convert_to_dicom_date_time_datetime(value, valuerep.DA)
-    except ValueError:
-        raise ValueError(f"Invalid date format: {value}")
+    except ValueError as err:
+        raise ValueError(f"Invalid date format: {value} ({err})") from err
 
 
 def convert_to_dicom_time(value: str | datetime.time | TimeRange) -> str:
     """Convert a time or time range to a DICOM compatible string representation."""
     try:
         return _convert_to_dicom_date_time_datetime(value, valuerep.TM)
-    except ValueError:
-        raise ValueError(f"Invalid time format: {value}")
+    except ValueError as err:
+        raise ValueError(f"Invalid time format: {value} ({err})") from err
 
 
 def convert_to_dicom_datetime(value: str | datetime.datetime | DateTimeRange) -> str:
     """Convert a datetime or datetime range to a DICOM compatible string representation."""
     try:
         return _convert_to_dicom_date_time_datetime(value, valuerep.DT)
-    except ValueError:
-        raise ValueError(f"Invalid datetime format: {value}")
+    except ValueError as err:
+        raise ValueError(f"Invalid datetime format: {value} ({err})") from err
 
 
 def convert_to_python_date(value: str) -> datetime.date:

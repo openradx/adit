@@ -119,6 +119,13 @@ class BatchQueryTask(DicomTask):
                 "PatientName and PatientBirthDate."
             )
 
+        if (
+            self.study_date_start
+            and self.study_date_end
+            and self.study_date_start > self.study_date_end
+        ):
+            raise ValidationError("From must not be after Until.")
+
         return super().clean()
 
     def get_absolute_url(self):

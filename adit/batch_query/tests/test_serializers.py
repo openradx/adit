@@ -48,3 +48,22 @@ def test_deserializes_query_task(data):
 
     assert serializer.validated_data[2]["patient_id"] == "1003"
     assert serializer.validated_data[2]["accession_number"] == "0062094311"
+
+
+def test_rejects_study_date_start_after_end(data):
+    data[0]["study_date_start"] = "2019-06-05"
+    data[0]["study_date_end"] = "2019-06-03"
+
+    serializer = BatchQueryTaskSerializer(data=data, many=True)
+
+    assert not serializer.is_valid()
+    assert serializer.errors == {0: {"non_field_errors": ["From must not be after Until."]}}
+
+
+def test_accepts_single_day_study_date_range(data):
+    data[0]["study_date_start"] = "2019-06-03"
+    data[0]["study_date_end"] = "2019-06-03"
+
+    serializer = BatchQueryTaskSerializer(data=data, many=True)
+
+    assert serializer.is_valid()

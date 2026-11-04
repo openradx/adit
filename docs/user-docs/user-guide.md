@@ -82,8 +82,8 @@ These are the columns in the batch file to execute your queries:
 - **PatientName**: The name of the patient.
 - **PatientBirthDate**: The birth date of the patient.
 - **AccessionNumber**: The Accession Number (a unique ID) of the study.
-- **From**: Only include studies newer than or equal to this date.
-- **Until**: Only include studies older than or equal to this date.
+- **From**: Only include studies newer than or equal to this date. Leave it empty for no lower limit.
+- **Until**: Only include studies older than or equal to this date. Leave it empty for no upper limit. Must not be before From; use the same date in both for a single day.
 - **Modality**: The modality of the study. Multiple modalities to query can be provided as a comma separated list.
 - **StudyDescription**: Only include studies with a matching study description. The value is sent to the PACS as a DICOM query attribute, so the DICOM wildcards `*` and `?` can be used.
 - **SeriesDescription**: Only include series of the study, whose series description match a certain case insensitive regular expression pattern (see introduction into using a regular expression and testing your regular expression).
