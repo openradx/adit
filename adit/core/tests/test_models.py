@@ -754,3 +754,19 @@ class TestDicomFolder:
 
         assert folder.quota is None
         assert folder.warn_size is None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "accepted, calling_ae, result",
+    [
+        ("", "ANY", True),
+        ("PACS_SEND, PACS_QR", "PACS_QR", True),
+        ("PACS_SEND, PACS_QR", "OTHER", False),
+        ("PACS_SEND,", None, False),
+    ],
+)
+def test_server_accepts_calling_ae_titles(accepted: str, calling_ae: str | None, result: bool):
+    server = DicomServerFactory.create(accepted_calling_ae_titles=accepted)
+
+    assert server.accepts_calling_ae_title(calling_ae) is result

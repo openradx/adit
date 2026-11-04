@@ -1,0 +1,13 @@
+# Configuration for zizmor, the GitHub Actions auditor run in CI.
+rules:
+  dangerous-triggers:
+    # The Claude bot workflow reacts to comments. The action only acts for
+    # commenters with write access and the job runs with read-only
+    # permissions, so the trigger is contained.
+    ignore:
+      - claude.yml
+  ref-version-mismatch:
+    # The pinned hash of the publish action is tagged v1.14.2; the comment
+    # says release/v1. Harmless until the comment is corrected.
+    ignore:
+      - publish-client.yml

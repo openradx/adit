@@ -1,18 +1,26 @@
 """Tests for DimseConnector retry behavior and connection management."""
 
 import tempfile
-from collections.abc import Iterator
+import threading
+import time
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+import stamina
+from django.conf import settings
 from pydicom import Dataset
+from pynetdicom import AE, ALL_TRANSFER_SYNTAXES, evt
+from pynetdicom.sop_class import StudyRootQueryRetrieveInformationModelMove  # type: ignore
 from pynetdicom.status import Status
+from pynetdicom.transport import ThreadedAssociationServer
 
-from adit.core.errors import DicomError, RetriableDicomError
+from adit.core.errors import AssociationLostError, DicomError, RetriableDicomError
 from adit.core.factories import DicomMoveServerFactory, DicomServerFactory
 from adit.core.utils.dicom_dataset import QueryDataset
+from adit.core.utils.dicom_utils import read_dataset
 from adit.core.utils.dimse_connector import DimseConnector
 from adit.core.utils.testing_helpers import DicomTestHelper, create_association_mock
 
@@ -249,9 +257,7 @@ class TestHandleGetAndMoveResponses:
 
     def test_success_with_completed_suboperations(self):
         connector = self._connector()
-        responses = iter(
-            [(_status(Status.SUCCESS, NumberOfCompletedSuboperations=3), None)]
-        )
+        responses = iter([(_status(Status.SUCCESS, NumberOfCompletedSuboperations=3), None)])
         # Should not raise and should not log warnings
         connector._handle_get_and_move_responses(responses, "C-GET")
         assert connector.logs == []
@@ -553,3 +559,371 @@ class TestOpenCloseConnection:
         assoc.release.assert_called_once()
         assert connector.assoc is None
         assert connector._current_service is None
+
+
+@pytest.mark.django_db
+def test_c_move_batch_keeps_message_ids_within_16_bit(mocker):
+    connector = DimseConnector(DicomServerFactory.create(), auto_connect=True)
+    associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+    associate_mock.return_value = create_association_mock()
+    send_c_move = mocker.patch.object(connector, "_send_c_move")
+    query = QueryDataset.create(PatientID="1", StudyInstanceUID="1.123")
+
+    connector.send_c_move_batch([query] * 0x10001, "DEST_AE")
+
+    msg_ids = [call.args[2] for call in send_c_move.call_args_list]
+    assert max(msg_ids) == 0xFFFF
+    assert msg_ids[0xFFFF] == 1
+
+
+@pytest.mark.django_db
+def test_c_move_batch_fails_retriably_once_the_association_is_no_longer_established(mocker):
+    connector = DimseConnector(DicomServerFactory.create(), auto_connect=True)
+    associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+    assoc = create_association_mock()
+    associate_mock.return_value = assoc
+
+    def send_c_move(*args, **kwargs):
+        # Like pynetdicom: the peer released or aborted after a failing C-MOVE, and the thread
+        # of the association is still alive for a moment
+        if not assoc.is_established:
+            raise RuntimeError("The association must be established")
+        assoc.is_established = False
+        return iter([(_status(0xA701), None)])
+
+    assoc.send_c_move.side_effect = send_c_move
+    assoc.is_alive.return_value = True
+    queries = [
+        QueryDataset.create(
+            QueryRetrieveLevel="IMAGE",
+            PatientID="1",
+            StudyInstanceUID="1.123",
+            SeriesInstanceUID="1.123.1",
+            SOPInstanceUID=f"1.123.1.{index}",
+        )
+        for index in range(2)
+    ]
+
+    with pytest.raises(RetriableDicomError, match="Lost the association"):
+        connector.send_c_move_batch(queries, "DEST_AE")
+
+
+# C-MOVE guard, against a real move SCP that sends no Pending responses while it is silent
+
+
+def _sample_dataset() -> Dataset:
+    return read_dataset(next(Path(f"{settings.BASE_PATH}/samples/dicoms").rglob("*.dcm")))
+
+
+def _start_move_scp(
+    port: int, silence: float, store_port: int | None = None, images: int = 0
+) -> ThreadedAssociationServer:
+    """A move SCP silent for `silence` s before its final response, or before each image."""
+    sample = _sample_dataset()
+    ae = AE("MOVESCP")
+    ae.add_supported_context(StudyRootQueryRetrieveInformationModelMove)
+    ae.add_requested_context(sample.SOPClassUID, sample.file_meta.TransferSyntaxUID)
+
+    def handle_move(event):
+        yield "127.0.0.1", store_port or 1
+        if not images:
+            time.sleep(silence)
+        yield images
+        for _ in range(images):
+            time.sleep(silence)
+            yield 0xFF00, sample
+
+    server = ae.start_server(
+        ("127.0.0.1", port), block=False, evt_handlers=[(evt.EVT_C_MOVE, handle_move)]
+    )
+    assert server
+    return server
+
+
+def _start_store_scp(port: int) -> ThreadedAssociationServer:
+    ae = AE("STORESCP")
+    ae.add_supported_context(_sample_dataset().SOPClassUID, ALL_TRANSFER_SYNTAXES)
+    server = ae.start_server(
+        ("127.0.0.1", port), block=False, evt_handlers=[(evt.EVT_C_STORE, lambda event: 0x0000)]
+    )
+    assert server
+    return server
+
+
+def _move_connector(port: int, **kwargs) -> DimseConnector:
+    server = DicomServerFactory.create(host="127.0.0.1", port=port, ae_title="MOVESCP")
+    return DimseConnector(server, dimse_timeout=1, **kwargs)
+
+
+def _study_query() -> QueryDataset:
+    return QueryDataset.create(QueryRetrieveLevel="STUDY", PatientID="1", StudyInstanceUID="1.2.3")
+
+
+def _run(call: Callable[[], object], timeout: float = 15) -> BaseException | None:
+    """Run the call in a thread, so that a hanging C-MOVE fails the test instead of blocking it."""
+    outcome: list[BaseException | None] = []
+
+    def run():
+        try:
+            call()
+            outcome.append(None)
+        except BaseException as err:
+            outcome.append(err)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    thread.join(timeout)
+    assert outcome, "The C-MOVE did not end."
+    return outcome[0]
+
+
+def _guard_threads() -> list[threading.Thread]:
+    return [thread for thread in threading.enumerate() if thread.name == "c-move-guard"]
+
+
+@pytest.mark.django_db
+def test_c_move_survives_silence_while_activity_continues():
+    scp = _start_move_scp(9940, silence=3)
+    connector = _move_connector(9940, auto_close=False)
+    try:
+        error = _run(
+            lambda: connector.send_c_move(_study_query(), "DEST", last_activity=time.monotonic)
+        )
+
+        assert error is None
+        # The association is kept open here, its own DIMSE timeout is back
+        assert connector.assoc and connector.assoc.dimse_timeout == 1
+        assert _guard_threads() == []
+    finally:
+        connector.close_connection()
+        scp.shutdown()
+
+
+@pytest.mark.django_db
+def test_c_move_without_response_or_activity_is_aborted_after_the_dimse_timeout(caplog):
+    scp = _start_move_scp(9941, silence=6)
+    connector = _move_connector(9941)
+    started_at = time.monotonic()
+    try:
+        with stamina.set_testing(True):
+            error = _run(
+                lambda: connector.send_c_move(
+                    _study_query(), "DEST", last_activity=lambda: started_at
+                )
+            )
+
+        assert isinstance(error, AssociationLostError)
+        assert time.monotonic() - started_at < 4
+        assert any(
+            record.levelname == "WARNING" and "aborting" in record.getMessage()
+            for record in caplog.records
+        )
+        assert _guard_threads() == []
+    finally:
+        scp.shutdown()
+
+
+@pytest.mark.django_db
+def test_c_move_pending_responses_reset_the_guard():
+    store_scp = _start_store_scp(9943)
+    scp = _start_move_scp(9942, silence=0.6, store_port=9943, images=3)
+    connector = _move_connector(9942)
+    started_at = time.monotonic()
+    try:
+        error = _run(
+            lambda: connector.send_c_move(_study_query(), "DEST", last_activity=lambda: started_at)
+        )
+
+        assert error is None
+        assert time.monotonic() - started_at > 1.5
+    finally:
+        scp.shutdown()
+        store_scp.shutdown()
+
+
+@pytest.mark.django_db
+def test_c_move_without_activity_source_keeps_the_dimse_timeout():
+    scp = _start_move_scp(9944, silence=3)
+    connector = _move_connector(9944)
+    try:
+        with stamina.set_testing(True):
+            error = _run(lambda: connector.send_c_move(_study_query(), "DEST"))
+
+        assert isinstance(error, AssociationLostError)
+    finally:
+        scp.shutdown()
+
+
+@pytest.mark.django_db
+def test_guard_wakes_the_move_when_its_activity_source_fails(caplog):
+    scp = _start_move_scp(9945, silence=30)
+    connector = _move_connector(9945)
+
+    def broken_activity() -> float:
+        raise RuntimeError("broken")
+
+    started_at = time.monotonic()
+    try:
+        with stamina.set_testing(True):
+            error = _run(
+                lambda: connector.send_c_move(_study_query(), "DEST", last_activity=broken_activity)
+            )
+
+        assert isinstance(error, AssociationLostError)
+        assert time.monotonic() - started_at < 5
+        assert any(record.levelname == "ERROR" for record in caplog.records)
+        assert _guard_threads() == []
+    finally:
+        scp.shutdown()
+
+
+@pytest.mark.django_db
+def test_guard_firing_as_the_move_ends_spares_the_next_move():
+    # Arrange: the guard fires only once the final response was handled, as when it arrives
+    # at the moment the guard gives up waiting for it
+    scp = _start_move_scp(9948, silence=0.5)
+    connector = _move_connector(9948, auto_close=False)
+    handle_responses = connector._handle_get_and_move_responses
+    responses_handled = threading.Event()
+
+    def handle_responses_then_signal(*args, **kwargs):
+        try:
+            return handle_responses(*args, **kwargs)
+        finally:
+            responses_handled.set()
+
+    def activity_failing_late() -> float:
+        responses_handled.wait(timeout=5)
+        raise RuntimeError("broken")
+
+    try:
+        with (
+            patch.object(
+                connector,
+                "_handle_get_and_move_responses",
+                side_effect=handle_responses_then_signal,
+            ),
+            stamina.set_testing(True),
+        ):
+            # Act
+            first_error = _run(
+                lambda: connector.send_c_move(
+                    _study_query(), "DEST", last_activity=activity_failing_late
+                )
+            )
+            second_error = _run(
+                lambda: connector.send_c_move(_study_query(), "DEST", last_activity=time.monotonic)
+            )
+
+        # Assert
+        assert first_error is None
+        assert second_error is None
+    finally:
+        connector.close_connection()
+        scp.shutdown()
+
+
+@pytest.mark.django_db
+def test_c_move_returns_the_images_the_pacs_reports_as_sent():
+    store_scp = _start_store_scp(9947)
+    scp = _start_move_scp(9946, silence=0, store_port=9947, images=2)
+    connector = _move_connector(9946)
+    try:
+        with stamina.set_testing(True):
+            assert connector.send_c_move(_study_query(), "STORESCP") == 2
+    finally:
+        scp.shutdown()
+        store_scp.shutdown()
+
+
+@pytest.mark.django_db
+class TestCMoveReportedCount:
+    def _connector(self, mocker, *responses: list[tuple[Dataset, Dataset | None]]):
+        associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+        association_mock = create_association_mock()
+        association_mock.is_alive.return_value = True
+        association_mock.send_c_move.side_effect = [iter(r) for r in responses]
+        associate_mock.return_value = association_mock
+        return DimseConnector(DicomServerFactory.create())
+
+    def test_final_response_counts_completed_and_warning(self, mocker):
+        connector = self._connector(
+            mocker,
+            [
+                (
+                    _status(
+                        0xFF00, NumberOfRemainingSuboperations=2, NumberOfCompletedSuboperations=1
+                    ),
+                    None,
+                ),
+                (
+                    _status(
+                        0xB000,
+                        NumberOfCompletedSuboperations=2,
+                        NumberOfWarningSuboperations=1,
+                        NumberOfFailedSuboperations=1,
+                    ),
+                    None,
+                ),
+            ],
+        )
+        with stamina.set_testing(True):
+            assert connector.send_c_move(_study_query(), "DEST") == 3
+
+    def test_without_final_counters_the_last_pending_response_counts(self, mocker):
+        connector = self._connector(
+            mocker,
+            [
+                (
+                    _status(
+                        0xFF00, NumberOfRemainingSuboperations=3, NumberOfCompletedSuboperations=0
+                    ),
+                    None,
+                ),
+                (
+                    _status(
+                        0xFF00,
+                        NumberOfRemainingSuboperations=2,
+                        NumberOfCompletedSuboperations=1,
+                        NumberOfWarningSuboperations=0,
+                    ),
+                    None,
+                ),
+                (_status(0x0000), None),
+            ],
+        )
+        with stamina.set_testing(True):
+            assert connector.send_c_move(_study_query(), "DEST") == 3
+
+    def test_without_any_counters_nothing_is_reported(self, mocker):
+        connector = self._connector(mocker, [(_status(0x0000), None)])
+        with stamina.set_testing(True):
+            assert connector.send_c_move(_study_query(), "DEST") is None
+
+    def test_a_success_without_any_sub_operation_reports_nothing(self, mocker):
+        # The empty success of a busy PACS doesn't tell how many images there are
+        connector = self._connector(
+            mocker,
+            [
+                (
+                    _status(
+                        0x0000,
+                        NumberOfCompletedSuboperations=0,
+                        NumberOfFailedSuboperations=0,
+                        NumberOfWarningSuboperations=0,
+                    ),
+                    None,
+                )
+            ],
+        )
+        with stamina.set_testing(True):
+            assert connector.send_c_move(_study_query(), "DEST") is None
+
+    def test_batch_reports_each_move_in_order(self, mocker):
+        connector = self._connector(
+            mocker,
+            [(_status(0x0000, NumberOfCompletedSuboperations=1), None)],
+            [(_status(0xA702), None)],  # A failure status, skipped
+            [(_status(0x0000), None)],
+        )
+        assert connector.send_c_move_batch([_study_query()] * 3, "DEST") == [1, None, None]
