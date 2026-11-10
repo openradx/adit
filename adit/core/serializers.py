@@ -38,7 +38,7 @@ class BatchTaskSerializer(serializers.ModelSerializer):
         input_formats = date_input_formats + datetime_input_formats
         field.input_formats = input_formats  # type: ignore
 
-        field.error_messages["invalid"] = "Date has wrong format."
+        field.error_messages = {**field.error_messages, "invalid": "Date has wrong format."}
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
