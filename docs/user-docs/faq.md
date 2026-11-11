@@ -11,6 +11,10 @@ A: ADIT uses the dicognito library to:
 - **Add trial information** if specified
 - **Maintain consistency** across multiple studies for the same patient
 
+**Q: Does the same pseudonym always lead to the same pseudonymized data?**
+
+A: Only if the administrator has set `PSEUDONYMIZATION_SALT`. Then everything that is pseudonymized with the same pseudonym in Selective Transfer, Batch Transfer, a direct study download or via the DICOMweb API gets the same replaced UIDs (Study, Series and SOP Instance UID etc.) and the same date shift. A study that is transferred again results in the same instances, and several studies of one patient fit together. Different pseudonyms lead to different replaced UIDs. Without the salt (the default) the replaced UIDs and the date shift are different in every transfer task and every API request. Mass Transfer does not use this setting, it has its own salt per job.
+
 **Q: What DICOM tags are anonymized?**
 
 A: ADIT anonymizes standard identifying tags including:

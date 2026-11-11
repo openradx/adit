@@ -393,3 +393,48 @@ def test_transfer_to_folder_pseudonymizes_dataset(mocker: MockerFixture):
     # not as a whole-study fetch.
     source_operator_mock.fetch_study.assert_not_called()
     source_operator_mock.fetch_series.assert_called_once()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("salt", "same_uids"), [("my-salt", True), ("", False)])
+def test_rerun_task_pseudonymizes_alike_only_with_salt(
+    mocker: MockerFixture, settings, salt: str, same_uids: bool
+):
+    settings.PSEUDONYMIZATION_SALT = salt
+
+    task = ExampleTransferTaskFactory.create(
+        source=DicomServerFactory(),
+        destination=DicomFolderFactory(),
+        series_uids=[],
+        pseudonym="SECRET01",
+        job__trial_protocol_id="",
+    )
+    _, study = create_resources(task)
+
+    def fetch_series(patient_id, study_uid, series_uid, callback):
+        ds = Dataset()
+        ds.StudyInstanceUID = study_uid
+        ds.SeriesInstanceUID = series_uid
+        ds.SOPInstanceUID = "1.2.3.4.5.6"
+        ds.file_meta = FileMetaDataset()
+        callback(ds)
+
+    mocker.patch("adit.core.processors.os.makedirs", autospec=True)
+    mocker.patch("adit.core.processors.Path.mkdir", autospec=True)
+    write_mock = mocker.patch("adit.core.processors.write_dataset", autospec=True)
+
+    # Every run of a task, e.g. a retry, has its own processor.
+    for _ in range(2):
+        source_operator_mock = mocker.create_autospec(DicomOperator)
+        source_operator_mock.find_studies.return_value = iter([study])
+        source_operator_mock.find_series.return_value = iter([_make_series("1.2.3.4.5", "CT")])
+        source_operator_mock.fetch_series.side_effect = fetch_series
+        processor = TransferTaskProcessor(task)
+        mocker.patch.object(processor, "source_operator", source_operator_mock)
+        processor.process()
+
+    first, second = (call.args[0] for call in write_mock.call_args_list)
+    assert first.StudyInstanceUID != task.study_uid
+    assert (first.StudyInstanceUID == second.StudyInstanceUID) is same_uids
+    assert (first.SeriesInstanceUID == second.SeriesInstanceUID) is same_uids
+    assert (first.SOPInstanceUID == second.SOPInstanceUID) is same_uids
