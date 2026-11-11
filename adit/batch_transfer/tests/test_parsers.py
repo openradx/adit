@@ -51,7 +51,7 @@ def test_same_studies_are_grouped_together(create_batch_file, data):
 
 
 def test_can_parse_without_series_uid(create_batch_file, data):
-    data.drop(columns=["SeriesInstanceUID"], inplace=True)
+    data = data.drop(columns=["SeriesInstanceUID"])
     file = create_batch_file(data)
 
     parser = BatchTransferFileParser(can_transfer_unpseudonymized=True)
