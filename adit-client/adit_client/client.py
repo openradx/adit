@@ -89,7 +89,17 @@ class AditClient:
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
     ) -> Iterator[Dataset]:
         """Iterate over all instances of a study."""
-        yield from self._create_dicom_web_client(ae_title).iter_study(study_uid)
+        additional_params = {}
+        if pseudonym:
+            additional_params["pseudonym"] = pseudonym
+        if self.trial_protocol_id:
+            additional_params["trial_protocol_id"] = self.trial_protocol_id
+        if self.trial_protocol_name:
+            additional_params["trial_protocol_name"] = self.trial_protocol_name
+
+        yield from self._create_dicom_web_client(ae_title).iter_study(
+            study_uid, additional_params=additional_params
+        )
 
     def retrieve_series(
         self,
@@ -139,8 +149,16 @@ class AditClient:
         pseudonym: str | None = None,
     ) -> Iterator[Dataset]:
         """Iterate over all instances of a series."""
+        additional_params = {}
+        if pseudonym:
+            additional_params["pseudonym"] = pseudonym
+        if self.trial_protocol_id:
+            additional_params["trial_protocol_id"] = self.trial_protocol_id
+        if self.trial_protocol_name:
+            additional_params["trial_protocol_name"] = self.trial_protocol_name
+
         yield from self._create_dicom_web_client(ae_title).iter_series(
-            study_uid, series_instance_uid=series_uid
+            study_uid, series_instance_uid=series_uid, additional_params=additional_params
         )
 
     def retrieve_image(
