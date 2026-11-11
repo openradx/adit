@@ -78,6 +78,9 @@ dev = [
     "pyright>=1.1.394",
     "pytest>=8.3.4",
     "pytest-asyncio>=0.25.3",
+    # Provides the base_url fixture for pytest-playwright, whose own fallback fixture
+    # triggers a pytest deprecation warning
+    "pytest-base-url>=2.1.0",
     "pytest-cov>=6.0.0",
     "pytest-django>=4.10.0",
     "pytest-mock>=3.14.0",
@@ -130,9 +133,6 @@ filterwarnings = [
     'ignore:.*use of fork\(\) may lead to deadlocks.*:DeprecationWarning',
     'ignore:.*Use timezone-aware objects to represent datetimes in UTC.*:DeprecationWarning',
     'ignore:.*get_frame_offsets is deprecated and will be removed in v4.0.*:DeprecationWarning',
-    # pytest-playwright defines its fallback base_url fixture as an instance method; only that
-    # fixture is ignored, so the same mistake in our own fixtures still fails
-    "ignore:(?s)Session-scoped fixtures defined as instance methods.*'base_url' fixture:pytest.PytestRemovedIn10Warning",
 ]
 timeout = "60"
 
