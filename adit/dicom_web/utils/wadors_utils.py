@@ -25,6 +25,7 @@ from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_to_nifti_converter import DicomToNiftiConverter
 from adit.core.utils.dicom_utils import write_dataset
+from adit.core.utils.pseudonymizer import Pseudonymizer, compute_seed
 
 from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 
@@ -49,7 +50,7 @@ async def wado_retrieve(
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue[Dataset | None] = asyncio.Queue()
 
-    dicom_manipulator = DicomManipulator()
+    dicom_manipulator = DicomManipulator(Pseudonymizer(seed=compute_seed(pseudonym)))
 
     def callback(ds: Dataset) -> None:
         dicom_manipulator.manipulate(ds, pseudonym, trial_protocol_id, trial_protocol_name)

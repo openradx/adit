@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import string
 
 from dicognito.anonymizer import Anonymizer
@@ -23,6 +24,21 @@ def compute_pseudonym(seed: str, identifier: str, length: int) -> str:
         big_int, idx = divmod(big_int, len(_PSEUDONYM_ALPHABET))
         chars.append(_PSEUDONYM_ALPHABET[idx])
     return "".join(chars)
+
+
+def compute_seed(pseudonym: str | None) -> str | None:
+    """Derive the anonymizer seed of a pseudonym from PSEUDONYMIZATION_SALT.
+
+    A Pseudonymizer created with this seed replaces UIDs and shifts dates the
+    same way every time, so data of one pseudonym stays consistent across
+    transfer tasks and DICOMweb requests, while different pseudonyms get
+    unrelated results. Returns None, which leaves the Pseudonymizer random,
+    if no salt is configured or no pseudonym is given.
+    """
+    salt = settings.PSEUDONYMIZATION_SALT
+    if not salt or not pseudonym:
+        return None
+    return hmac.new(salt.encode("utf8"), pseudonym.encode("utf8"), hashlib.sha256).hexdigest()
 
 
 class Pseudonymizer:

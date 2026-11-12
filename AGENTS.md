@@ -186,6 +186,7 @@ quoted: the file is passed to the containers as is, and `docker stack deploy` ke
 - `RECEIVER_AE_TITLE`: C-STORE receiver AE title (required; `example.env` uses `ADIT1DEV`)
 - `EXCLUDE_MODALITIES`: Modalities skipped when a study is transferred or downloaded pseudonymized via the web UI; does not affect the client (default empty; `example.env` sets `PR,SR`)
 - `ANONYMIZATION_SEED`: Seed for client-side anonymization consistency
+- `PSEUDONYMIZATION_SALT`: Secret salt that makes pseudonymization with a user-provided pseudonym (selective and batch transfer, direct download, DICOMweb) repeatable: the same pseudonym always gets the same replaced UIDs and date shift (default empty: both differ per task and request; changing it breaks the link to earlier data)
 - `MOUNT_DIR`: Directory for mounting download folders
 - `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS`: Seconds without worker heartbeat before an `IN_PROGRESS` task counts as abandoned (default 30, never lower)
 - `DICOM_TASK_SWEEP_CRON`: Schedule of the stale task sweep (default `* * * * *`)

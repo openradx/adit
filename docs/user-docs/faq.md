@@ -9,7 +9,11 @@ A: ADIT uses the dicognito library to:
 - **Remove identifying information** from DICOM headers
 - **Replace patient names/IDs** with provided pseudonyms
 - **Add trial information** if specified
-- **Maintain consistency** across multiple studies for the same patient
+- **Maintain consistency** across multiple studies for the same patient, if a salt is set (see the next question)
+
+**Q: Does the same pseudonym always lead to the same pseudonymized data?**
+
+A: Only if the administrator has set `PSEUDONYMIZATION_SALT`. Then everything that is pseudonymized with the same pseudonym in Selective Transfer, Batch Transfer, a direct study download or via the DICOMweb API gets the same replaced UIDs (Study, Series and SOP Instance UID etc.) and the same date shift. A study that is transferred again results in the same instances, and several studies of one patient fit together. Different pseudonyms lead to different replaced UIDs. The mapping is the same for all users and projects of an ADIT instance: anyone who can transfer with a given pseudonym gets the same replaced UIDs and the same date shift, and can thereby link or re-identify data that others pseudonymized with it. So use pseudonyms that are unique to your project and hard to guess. Without the salt (the default) the replaced UIDs and the date shift are different in every transfer task and every API request. Mass Transfer does not use this setting, it has its own salt per job.
 
 **Q: What DICOM tags are anonymized?**
 

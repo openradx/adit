@@ -20,6 +20,7 @@ from .types import DicomLogEntry, ProcessingResult
 from .utils.dicom_dataset import QueryDataset, ResultDataset
 from .utils.dicom_operator import DicomOperator
 from .utils.dicom_utils import write_dataset
+from .utils.pseudonymizer import Pseudonymizer, compute_seed
 from .utils.sanitize import sanitize_filename
 
 logger = logging.getLogger(__name__)
@@ -258,7 +259,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
         study_folder = patient_folder / f"{prefix}-{modalities}"
         os.makedirs(study_folder, exist_ok=True)
 
-        dicom_manipulator = DicomManipulator()
+        dicom_manipulator = DicomManipulator(Pseudonymizer(seed=compute_seed(pseudonym)))
 
         modifier = partial(
             dicom_manipulator.manipulate,
