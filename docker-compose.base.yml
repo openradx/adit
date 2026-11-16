@@ -58,7 +58,7 @@ services:
     hostname: receiver.local
 
   postgres:
-    image: postgres:17@sha256:ff87138949ad9a46f32ff23bd6852b52ce024a13dffe9b4087be98292cdd3b4f
+    image: postgres:17@sha256:0d938e975177bef9f1f61f3f9dbcf2e0aa0a139568f66d3415ed8892eb97f6ac
     hostname: postgres.local
     volumes:
       - postgres_data:/var/lib/postgresql/data
