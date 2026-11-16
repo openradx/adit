@@ -123,7 +123,12 @@ class QueryAPIView(WebDicomAPIView):
         if "limit" in query:
             limit_results = int(query.pop("limit"))
 
-        query_ds = QueryDataset.from_dict(query)
+        try:
+            query_ds = QueryDataset.from_dict(query)
+        except ValueError as err:
+            logger.warning(f"Invalid DICOMweb query parameters - {err}")
+            raise ValidationError(str(err)) from err
+
         query_ds.ensure_elements(*request.GET.getlist("includefield"))
         return query_ds, limit_results
 

@@ -58,7 +58,7 @@ ADIT runs as multiple Docker containers that work together. In development, you 
 
 ### Container Types
 
-The Compose project is named `adit_dev` in development and `adit_prod` in production, so the containers are called `adit_dev-<service>-1` (`adit_prod-<service>-1`). All app services share one image and are configured by `docker-compose.base.yml` plus `docker-compose.dev.yml` or `docker-compose.prod.yml`.
+The Compose project is named `adit_dev` in development and `adit_prod` in production, so the containers are called `adit_dev-<service>-1` (`adit_prod-<service>-1`). A linked git worktree runs as its own project, `adit_wt<N>_<name>`, on shifted host ports (see "Git Worktrees" in `AGENTS.md`). All app services share one image and are configured by `docker-compose.base.yml` plus `docker-compose.dev.yml` or `docker-compose.prod.yml`.
 
 **Web Container (`adit_dev-web-1`)**: Runs Django application serving web UI and REST API. Ports: 8000 (dev), 80/443 (prod with SSL). Handles authentication, serves static files, enqueues tasks, and manages database connections. In development its startup command also runs migrations, creates the superuser and example data, and populates the Orthanc servers.
 
@@ -74,9 +74,9 @@ The Compose project is named `adit_dev` in development and `adit_prod` in produc
 
 Every worker runs `./manage.py sweep_stale_tasks` before starting `bg_worker`.
 
-**C-STORE Receiver Container (`adit_dev-receiver-1`)**: Accepts incoming DICOM data from C-MOVE operations. Ports: 11112 (DICOM, published as 11122 on the host in development and as `RECEIVER_PORT` in production), 14638 (file transmit). Forwards data to workers via TCP.
+**C-STORE Receiver Container (`adit_dev-receiver-1`)**: Accepts incoming DICOM data from C-MOVE operations. Ports: 11112 (DICOM, published as `RECEIVER_DEV_PORT` (11122) on the host in development and as `RECEIVER_PORT` in production), 14638 (file transmit). Forwards data to workers via TCP.
 
-**Orthanc Containers (`adit_dev-orthanc1-1`, `adit_dev-orthanc2-1`)**: Development PACS instances for testing. Official Orthanc image. DICOM ports 7501/7502 (published on the host in development only); their HTTP/DICOMweb ports 6501/6502 are internal and reachable in the web UI through a reverse proxy. Uses SQLite for development.
+**Orthanc Containers (`adit_dev-orthanc1-1`, `adit_dev-orthanc2-1`)**: Development PACS instances for testing. Official Orthanc image. DICOM ports 7501/7502 (published on the host in development only, as `ORTHANC1_DEV_PORT`/`ORTHANC2_DEV_PORT`); their HTTP/DICOMweb ports 6501/6502 are internal and reachable in the web UI through a reverse proxy. Uses SQLite for development.
 
 ## Application Architecture
 
@@ -121,7 +121,17 @@ Transfer Jobs define transfer operations with owner and status tracking, contain
 
 ### DICOM Configuration
 
-DICOM Servers represent remote PACS/Orthanc instances, with DICOM Nodes defining source and destination configurations. The system supports both DIMSE protocols (C-FIND, C-GET, C-MOVE, C-STORE) and DICOMweb REST APIs (QIDO-RS, WADO-RS, STOW-RS). Downloading data from a DICOM server can be done by using a DIMSE operation or by using DICOMweb REST calls. When using DIMSE operations C-GET is prioritized over C-MOVE as a worker can fetch the DICOM data directly from the server. When downloading data using a C-MOVE operation, ADIT commands the source DICOM server to send the data to a C-STORE SCP server of ADIT running in a separate container (Receiver) that receives the DICOM data and sends it back to the worker over a TCP socket (`FileTransmitServer` in the receiver, `FileTransmitClient` in the worker; see `adit/core/utils/file_transmit.py`).
+DICOM Servers represent remote PACS/Orthanc instances, with DICOM Nodes defining source and destination configurations. The system supports both DIMSE protocols (C-FIND, C-GET, C-MOVE, C-STORE) and DICOMweb REST APIs (QIDO-RS, WADO-RS, STOW-RS). Of the DIMSE operations, C-GET is preferred over C-MOVE for downloads, as the worker gets the data directly from the server.
+
+With C-MOVE, the server sends the data to ADIT's C-STORE SCP in a separate container (Receiver), which forwards it over TCP to the worker (`FileTransmitServer` and `FileTransmitClient` in `adit/core/utils/file_transmit.py`):
+
+- **Routing:** the receiver routes each image by its StudyInstanceUID to the workers subscribed to that study, as a PACS may send from another AE title than it is queried with. A worker that fetches one series is sent only that series' images, so the others stay for their own fetch, and it takes each image once. A server's `accepted_calling_ae_titles` restricts the calling AE titles it takes images from, which keeps out copies of the study from other PACS (AE titles aren't authenticated, so not a sender using an accepted one).
+- **Connections:** each worker connection has its own send queue, so a slow worker only delays itself; one that stops reading is disconnected after `FILE_TRANSMIT_WRITE_TIMEOUT`.
+- **C-MOVE:** the worker sends it only once the receiver acknowledged its subscription, and aborts it only when neither a response nor an image arrived for the DIMSE timeout, as a PACS need not send Pending responses.
+- **Completeness:** a download is checked against the images its IMAGE-level C-FIND listed and the number of images the PACS reports as sent, which also reveals a capped C-FIND. For a server without `image_level_find_support`, it is checked against each series' `NumberOfSeriesRelatedInstances` and the number reported as sent instead. A series without a count is expected to hold one image at least, so when the PACS reports neither count, further missing images go unnoticed.
+- **Delivery confirmation:** after a C-MOVE the worker sends a `sync` request, which the receiver answers once it forwarded everything it got before, so a receiver backlog doesn't count as missing. As some PACS send images after their final C-MOVE response, missing images are then waited for up to `C_MOVE_DOWNLOAD_TIMEOUT`.
+- **Re-fetch:** missing images are requested again, one IMAGE-level C-MOVE each (one SERIES-level C-MOVE per short series without the list), for up to `C_MOVE_REFETCH_ATTEMPTS` rounds. When nothing arrived or more than `C_MOVE_REFETCH_MAX_MISSING_PERCENT` is missing, the download fails right away with a `RetriableDicomError` and is retried as a whole. Images still missing after the re-fetch raise an `IncompleteFetchError` (only a warning with `C_MOVE_FAIL_ON_INCOMPLETE=false`).
+- **Spool:** the receiver keeps files no worker took, e.g. while a worker restarted, for `RECEIVER_SPOOL_TTL` up to `RECEIVER_SPOOL_MAX_SIZE`, and replays them to the next worker that subscribes to their study (to a series fetch only those of its series), followed by a `synced` with the token `replay`. With the list, the worker waits for it and, when few enough images are missing to re-fetch them and each series' `NumberOfSeriesRelatedInstances` confirms the list, requests only those instead of the whole C-MOVE. The spool is lost when the receiver restarts.
 
 ## Related Projects
 

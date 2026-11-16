@@ -143,6 +143,29 @@ class DicomServer(DicomNode):
     study_root_get_support = models.BooleanField(default=False)
     study_root_move_support = models.BooleanField(default=False)
     store_scp_support = models.BooleanField(default=False)
+    # Whether a C-MOVE download may list the images of a study or series with IMAGE-level
+    # queries first. Without it, its completeness is checked with the image counts the PACS
+    # reports.
+    image_level_find_support = models.BooleanField(
+        default=True,
+        help_text=(
+            "Whether the server answers IMAGE-level queries completely. Turn it off for a "
+            "PACS that doesn't support them, caps their results or is slow at them."
+        ),
+    )
+
+    # Which C-STOREs a C-MOVE download from the server takes, as the receiver routes images
+    # on their StudyInstanceUID only
+    accepted_calling_ae_titles = models.CharField(
+        blank=True,
+        default="",
+        max_length=1000,
+        help_text=(
+            "AE titles, separated by commas, that the server sends the images of a C-MOVE "
+            "from. Images from other AE titles are ignored then. Empty accepts any AE title, "
+            "as some PACS send from another AE title than they are queried with."
+        ),
+    )
 
     # (optional) DICOMweb support
     dicomweb_root_url = models.CharField(blank=True, max_length=2000)
@@ -158,6 +181,12 @@ class DicomServer(DicomNode):
     max_search_results = models.PositiveIntegerField(default=200, validators=[MinValueValidator(1)])
 
     objects: DicomNodeManager["DicomServer"] = DicomNodeManager["DicomServer"]()
+
+    def accepts_calling_ae_title(self, calling_ae_title: str | None) -> bool:
+        """Whether a C-MOVE download takes images the server sent from that AE title."""
+        accepted = [title.strip() for title in self.accepted_calling_ae_titles.split(",")]
+        accepted = [title for title in accepted if title]
+        return not accepted or calling_ae_title in accepted
 
 
 class DicomFolder(DicomNode):

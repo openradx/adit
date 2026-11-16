@@ -30,6 +30,43 @@ class RetriableDicomError(DicomError):
     pass
 
 
+class AssociationLostError(RetriableDicomError):
+    """The association ended during a DIMSE operation (timeout, abort or invalid response)."""
+
+    pass
+
+
+class IncompleteFetchError(RetriableDicomError):
+    """Images of a C-MOVE download are still missing after all re-fetch rounds.
+
+    Retriable like any RetriableDicomError. Carries the SOPInstanceUIDs of the missing images
+    that are known to report or handle exactly those images. Images the PACS reports as sent
+    that no C-FIND listed are missing as well, but have no known SOPInstanceUID.
+    """
+
+    def __init__(
+        self, study_uid: str, missing_count: int, image_count: int, missing_image_uids: list[str]
+    ) -> None:
+        super().__init__(
+            f"{missing_count} of {image_count} images of study {study_uid} "
+            "could not be fetched with C-MOVE."
+        )
+        self.study_uid = study_uid
+        self.missing_count = missing_count
+        self.image_count = image_count
+        self.missing_image_uids = missing_image_uids
+
+    def __reduce__(
+        self,
+    ) -> tuple[type["IncompleteFetchError"], tuple[str, int, int, list[str]]]:
+        # The error leaves the Pebble task process pickled. By default an exception is
+        # rebuilt from self.args, which only holds the message.
+        return (
+            type(self),
+            (self.study_uid, self.missing_count, self.image_count, self.missing_image_uids),
+        )
+
+
 def is_retriable_http_status(status_code: int) -> bool:
     """Check if an HTTP status code indicates a transient error that should be retried.
 

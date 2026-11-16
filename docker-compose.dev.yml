@@ -24,10 +24,10 @@ services:
 
   web:
     <<: *default-app
-    image: adit_dev-web:latest
+    image: ${STACK_NAME:-adit_dev}-web:latest
     ports:
       - ${WEB_DEV_PORT:-8000}:8000
-      - ${REMOTE_DEBUGGING_PORT:-5678}:5678
+      - ${REMOTE_DEBUGGING_PORT:-5678}:${REMOTE_DEBUGGING_PORT:-5678}
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
@@ -46,7 +46,7 @@ services:
 
   default_worker:
     <<: *default-app
-    image: adit_dev-default_worker:latest
+    image: ${STACK_NAME:-adit_dev}-default_worker:latest
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
@@ -56,7 +56,7 @@ services:
 
   dicom_worker:
     <<: *default-app
-    image: adit_dev-dicom_worker:latest
+    image: ${STACK_NAME:-adit_dev}-dicom_worker:latest
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
@@ -66,7 +66,7 @@ services:
 
   mass_transfer_worker:
     <<: *default-app
-    image: adit_dev-mass_transfer_worker:latest
+    image: ${STACK_NAME:-adit_dev}-mass_transfer_worker:latest
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
@@ -76,9 +76,9 @@ services:
 
   receiver:
     <<: *default-app
-    image: adit_dev-receiver:latest
+    image: ${STACK_NAME:-adit_dev}-receiver:latest
     ports:
-      - 11122:11112
+      - ${RECEIVER_DEV_PORT:-11122}:11112
     command: |
       ./manage.py receiver --autoreload
 
@@ -90,8 +90,8 @@ services:
 
   orthanc1:
     ports:
-      - "7501:7501"
+      - ${ORTHANC1_DEV_PORT:-7501}:7501
 
   orthanc2:
     ports:
-      - "7502:7502"
+      - ${ORTHANC2_DEV_PORT:-7502}:7502
