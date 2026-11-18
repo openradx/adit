@@ -14,8 +14,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "dicognito", specifier = ">=0.17.0" },
-    { name = "dicomweb-client", specifier = ">=0.60.0" },
-    { name = "pydicom", specifier = ">=2.4.4" },
+    { name = "dicomweb-client", specifier = ">=0.61.2" },
+    { name = "pydicom", specifier = ">=3.0.0" },
 ]
 
 [[package]]

@@ -8,8 +8,8 @@ requires-python = ">=3.12,<4.0"
 dynamic = ["version"]
 dependencies = [
     "dicognito>=0.17.0",
-    "dicomweb-client>=0.60.0",
-    "pydicom>=2.4.4",
+    "dicomweb-client>=0.61.2",
+    "pydicom>=3.0.0",
 ]
 
 [build-system]

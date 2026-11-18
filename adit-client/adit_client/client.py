@@ -15,12 +15,20 @@ class AditClient:
         verify: str | bool = True,
         trial_protocol_id: str | None = None,
         trial_protocol_name: str | None = None,
+        timeout: float | tuple[float | None, float | None] = (20, None),
     ) -> None:
+        """Create a client for the DICOMweb API of an ADIT server.
+
+        timeout is passed to requests: seconds, or a (connect, read) tuple in which None
+        waits forever. ADIT only answers once the first image arrived from the PACS (the
+        metadata methods once all arrived), so the read timeout is off by default.
+        """
         self.server_url = server_url
         self.auth_token = auth_token
         self.verify = verify
         self.trial_protocol_id = trial_protocol_id
         self.trial_protocol_name = trial_protocol_name
+        self.timeout = timeout
         self.__version__ = importlib.metadata.version("adit-client")
 
     def search_for_studies(
@@ -332,4 +340,5 @@ class AditClient:
                 "Authorization": f"Token {self.auth_token}",
                 "User-Agent": f"python-adit_client/{self.__version__}",
             },
+            timeout=self.timeout,
         )

@@ -67,6 +67,10 @@ They accept an optional `pseudonym` that makes the server pseudonymize the data 
 - `retrieve_series(ae_title, study_uid, series_uid, pseudonym=None)`, `retrieve_series_metadata(...)`, `iter_series(...)`
 - `retrieve_image(ae_title, study_uid, series_uid, image_uid, pseudonym=None)`, `retrieve_image_metadata(...)`
 
+The server answers a retrieve only once the first image arrived from the PACS (the `*_metadata`
+methods once all arrived), so `AditClient` waits up to 20 s to connect but has no read timeout.
+Pass `timeout=` (seconds, or a `(connect, read)` tuple as in requests) to change that.
+
 Store (STOW-RS):
 
 - `store_images(ae_title, images)`: uploads a list of pydicom datasets.

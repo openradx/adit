@@ -73,3 +73,18 @@ def test_retrieve_sends_no_params_when_none_given(
     if "series_instance_uid" in call.kwargs:
         sent_uids.append(call.kwargs["series_instance_uid"])
     assert tuple(sent_uids) == uids
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "timeout"),
+    [({}, (20, None)), ({"timeout": 30}, 30), ({"timeout": (None, None)}, (None, None))],
+)
+def test_dicomweb_client_gets_the_timeout(mocker: MockerFixture, kwargs: dict, timeout):
+    # dicomweb-client defaults to 20 s for every read, while ADIT only answers once the
+    # first image arrived from the PACS.
+    dicomweb_client_class = mocker.patch("adit_client.client.DICOMwebClient", autospec=True)
+    client = AditClient("http://localhost", "token", **kwargs)
+
+    client._create_dicom_web_client("ORTHANC1")
+
+    assert dicomweb_client_class.call_args.kwargs["timeout"] == timeout
