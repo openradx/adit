@@ -271,6 +271,90 @@ def test_retrieve_series_with_manipulation(channels_live_server: ChannelsLiveSer
         )
 
 
+def _assert_manipulated(
+    result: pydicom.Dataset, pseudonym: str, protocol_id: str, protocol_name: str
+):
+    assert result.PatientID == pseudonym
+    assert result.PatientName == pseudonym
+    assert result.ClinicalTrialProtocolID == protocol_id
+    assert result.ClinicalTrialProtocolName == protocol_name
+    session_id = f"{result.StudyDate}-{result.StudyTime}"
+    assert result.PatientComments == (
+        f"Project:{protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
+    )
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_iter_study_with_manipulation(channels_live_server: ChannelsLiveServer):
+    setup_dimse_orthancs()
+
+    test_pseudonym = "TestPseudonym"
+    test_protocol_id = "TestProtocolID"
+    test_protocol_name = "TestProtocolName"
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    adit_client = AditClient(
+        server_url=channels_live_server.url,
+        auth_token=token,
+        trial_protocol_id=test_protocol_id,
+        trial_protocol_name=test_protocol_name,
+    )
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
+    study_metadata = metadata[metadata["StudyInstanceUID"] == study_uid]
+
+    results = list(adit_client.iter_study(server.ae_title, study_uid, test_pseudonym))
+
+    assert len(results) == len(study_metadata)
+    for result in results:
+        assert isinstance(result, pydicom.Dataset)
+        assert result.StudyInstanceUID != study_uid
+        _assert_manipulated(result, test_pseudonym, test_protocol_id, test_protocol_name)
+    assert {result.SeriesInstanceUID for result in results}.isdisjoint(
+        set(study_metadata["SeriesInstanceUID"])
+    )
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_iter_series_with_manipulation(channels_live_server: ChannelsLiveServer):
+    setup_dimse_orthancs()
+
+    test_pseudonym = "TestPseudonym"
+    test_protocol_id = "TestProtocolID"
+    test_protocol_name = "TestProtocolName"
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    adit_client = AditClient(
+        server_url=channels_live_server.url,
+        auth_token=token,
+        trial_protocol_id=test_protocol_id,
+        trial_protocol_name=test_protocol_name,
+    )
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
+    series_uid: str = metadata.iloc[0]["SeriesInstanceUID"]
+    series_metadata = metadata[metadata["SeriesInstanceUID"] == series_uid]
+
+    results = list(adit_client.iter_series(server.ae_title, study_uid, series_uid, test_pseudonym))
+
+    assert len(results) == len(series_metadata)
+    for result in results:
+        assert isinstance(result, pydicom.Dataset)
+        assert result.StudyInstanceUID != study_uid
+        assert result.SeriesInstanceUID != series_uid
+        _assert_manipulated(result, test_pseudonym, test_protocol_id, test_protocol_name)
+
+
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)

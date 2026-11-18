@@ -67,6 +67,10 @@ They accept an optional `pseudonym` that makes the server pseudonymize the data 
 - `retrieve_series(ae_title, study_uid, series_uid, pseudonym=None)`, `retrieve_series_metadata(...)`, `iter_series(...)`
 - `retrieve_image(ae_title, study_uid, series_uid, image_uid, pseudonym=None)`, `retrieve_image_metadata(...)`
 
+An empty (or blank) `pseudonym` raises `ValueError`, so a missing value can't silently return
+the original data; pass `None` to retrieve the data unpseudonymized. The `iter_*` methods raise
+it when iteration starts.
+
 Store (STOW-RS):
 
 - `store_images(ae_title, images)`: uploads a list of pydicom datasets.
