@@ -73,3 +73,18 @@ def test_retrieve_sends_no_params_when_none_given(
     if "series_instance_uid" in call.kwargs:
         sent_uids.append(call.kwargs["series_instance_uid"])
     assert tuple(sent_uids) == uids
+
+
+@pytest.mark.parametrize("pseudonym", ["", "   "])
+@pytest.mark.parametrize(("method", "dicomweb_method", "uids"), RETRIEVE_METHODS)
+def test_retrieve_rejects_an_empty_pseudonym(
+    mocker: MockerFixture, method: str, dicomweb_method: str, uids: tuple[str, ...], pseudonym: str
+):
+    dicomweb_client = mocker.create_autospec(DICOMwebClient, instance=True)
+    client = AditClient("http://localhost", "token")
+    mocker.patch.object(client, "_create_dicom_web_client", return_value=dicomweb_client)
+
+    with pytest.raises(ValueError, match="pseudonym must not be empty"):
+        list(getattr(client, method)("ORTHANC1", *uids, pseudonym=pseudonym))
+
+    getattr(dicomweb_client, dicomweb_method).assert_not_called()

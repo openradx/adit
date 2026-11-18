@@ -305,6 +305,10 @@ class AditClient:
 
     def _retrieve_params(self, pseudonym: str | None) -> dict[str, str]:
         """Query parameters that make the server pseudonymize and set the trial protocol."""
+        # An empty pseudonym would silently return the original, identifiable data
+        if pseudonym is not None and not pseudonym.strip():
+            raise ValueError("The pseudonym must not be empty, pass None to not pseudonymize.")
+
         params = {}
         if pseudonym:
             params["pseudonym"] = pseudonym
