@@ -152,6 +152,45 @@ class TestDimseConnectorRetry:
         assert connector.assoc is None
         assert association_mock.release.called
 
+    def _c_get_aborted_by_store_handler(self, mocker, fail_image: bool) -> MagicMock:
+        """A C-GET whose association is aborted, by the store handler if `fail_image`."""
+        association_mock = create_association_mock()
+        mocker.patch("adit.core.utils.dimse_connector.AE.associate", return_value=association_mock)
+
+        def send_c_get(*_args, **_kwargs):
+            if fail_image:
+                # What the store handler of DicomOperator does with an image it can't handle
+                store_errors = association_mock.bind.call_args.args[2][0]
+                store_errors.append(DicomError("Failed to handle image '1.2.3'."))
+            # pynetdicom answers with an empty status once the association is aborted
+            return iter([(Dataset(), None)])
+
+        association_mock.send_c_get.side_effect = send_c_get
+        return association_mock
+
+    def test_c_get_raises_the_store_error_without_retrying(self, mocker):
+        association_mock = self._c_get_aborted_by_store_handler(mocker, fail_image=True)
+        connector = DimseConnector(DicomServerFactory.create(), auto_connect=True)
+        query = QueryDataset.create(PatientID="12345", StudyInstanceUID="1.2.3.4.5")
+
+        with stamina.set_testing(True, attempts=5):
+            with pytest.raises(DicomError, match="Failed to handle image") as error:
+                connector.send_c_get(query, MagicMock(), [])
+
+        assert not isinstance(error.value, RetriableDicomError)
+        assert association_mock.send_c_get.call_count == 1
+
+    def test_c_get_retries_a_lost_association(self, mocker):
+        association_mock = self._c_get_aborted_by_store_handler(mocker, fail_image=False)
+        connector = DimseConnector(DicomServerFactory.create(), auto_connect=True)
+        query = QueryDataset.create(PatientID="12345", StudyInstanceUID="1.2.3.4.5")
+
+        with stamina.set_testing(True, attempts=5):
+            with pytest.raises(AssociationLostError):
+                connector.send_c_get(query, MagicMock(), [])
+
+        assert association_mock.send_c_get.call_count == 5
+
 
 @pytest.mark.django_db
 class TestDimseConnectorConnectionLifecycle:
