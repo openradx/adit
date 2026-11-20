@@ -1168,6 +1168,9 @@ class DicomOperator:
 
                 if fetch.stop_consumer.is_set():
                     subscribe_task.cancel()
+                    # Waited for here, as asyncio.run would cancel it again while it cleans up
+                    # (closes and removes the received file)
+                    await asyncio.gather(subscribe_task, return_exceptions=True)
                     break
 
                 if subscribe_task.done():
