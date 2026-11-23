@@ -2,7 +2,7 @@
 
 ## How to upgrade
 
-Routine dependency updates arrive as [Renovate](https://docs.renovatebot.com/) pull requests (`renovate.json`): non-major Python and JavaScript updates and Docker digest updates are grouped, lock file maintenance runs weekly, and the `rev` pins in `.pre-commit-config.yaml` are bumped too (the local `uv run` hooks take their tool versions from `uv.lock`). Version ceilings (e.g. PostgreSQL 17, Python 3.13) are enforced via `packageRules`. These are the places that hold version pins, and what to do when Renovate does not cover a change:
+Routine dependency updates arrive as [Renovate](https://docs.renovatebot.com/) pull requests (`renovate.json`): non-major Python and JavaScript updates and Docker digest updates are grouped, lock file maintenance runs weekly, and the `rev` pins in `.pre-commit-config.yaml` are bumped too (the local `uv run` hooks take their tool versions from `uv.lock`). Version ceilings (e.g. PostgreSQL 17, Python 3.14) are enforced via `packageRules`. These are the places that hold version pins, and what to do when Renovate does not cover a change:
 
 - The Python package dependencies (normal dependencies and dev dependencies)
   - Check outdated Python packages: `uv run cli show-outdated` (check Python section in output)

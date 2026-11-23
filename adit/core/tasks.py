@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 import subprocess
 import traceback
 from concurrent import futures
@@ -110,7 +111,13 @@ def _run_dicom_task(
 
     logger.info(f"Processing of {dicom_task} started.")
 
-    @concurrent.process(timeout=process_timeout, daemon=True)
+    # The nested function relies on the Django setup and settings of this process,
+    # which only a forked child inherits; Python 3.14 starts children with forkserver
+    # by default on Linux. pebble reads the keyword "context" at runtime although its
+    # type hints call it "mp_context", which pebble would silently ignore.
+    @concurrent.process(  # pyright: ignore[reportCallIssue]
+        timeout=process_timeout, daemon=True, context=multiprocessing.get_context("fork")
+    )
     def _process_dicom_task(model_label: str, task_id: int) -> ProcessingResult:
         dicom_task = get_dicom_task(model_label, task_id)
         processor = get_dicom_processor(dicom_task)
