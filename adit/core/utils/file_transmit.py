@@ -6,6 +6,7 @@ import tempfile
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from os import PathLike
+from pathlib import Path
 from typing import Any, BinaryIO
 
 from aiofiles import os
@@ -422,12 +423,14 @@ class FileTransmitClient:
                             await asyncio.to_thread(file.write, data)
                             remaining_bytes -= len(data)
                     finally:
-                        # Goes on in its thread if cancelled meanwhile
-                        await asyncio.to_thread(file.close)
+                        # Not in a thread: a cancelled wait for a thread that hasn't started
+                        # yet cancels the work too, and asyncio.run cancels the subscription
+                        # a second time when it ends the event loop while this cleans up
+                        file.close()
                 except BaseException:
                     # A failing removal must not replace the original error
                     with suppress(OSError):
-                        await os.remove(file_name)
+                        Path(file_name).unlink()
                     raise
 
                 # The file handler can report that no further files are needed by

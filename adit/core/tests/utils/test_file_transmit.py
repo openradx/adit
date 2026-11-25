@@ -6,14 +6,18 @@ import struct
 import tempfile
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
+from functools import partial
 from pathlib import Path
+from typing import BinaryIO
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiofiles import os
 from django.conf import settings
 
+from adit.core.utils import file_transmit
 from adit.core.utils.dicom_utils import read_dataset
 from adit.core.utils.file_transmit import (
     SUBSCRIBED_ACK,
@@ -250,24 +254,39 @@ async def test_partial_file_is_removed_when_subscription_is_cancelled_mid_file(
 
 
 @pytest.mark.asyncio
-async def test_received_file_is_removed_when_subscription_is_cancelled_while_closing_it(
+async def test_received_file_is_closed_and_removed_when_cancelled_before_a_thread_takes_it(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    # Arrange: closing the received file takes a while, as it runs in a thread
+    # Arrange: all worker threads are busy, so file work handed to a thread waits in the
+    # queue, and cancelling the wait also cancels the queued work. The subscription is
+    # cancelled twice, as asyncio.run cancels it again when it shuts down the event loop.
     monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
-    closing = asyncio.Event()
+    opened: list[BinaryIO] = []
+
+    def tracking_open(*args, **kwargs):
+        file = open(*args, **kwargs)
+        opened.append(file)
+        return file
+
+    monkeypatch.setattr(file_transmit, "open", tracking_open, raising=False)
+
+    release_worker = threading.Event()
+    busy_executor = ThreadPoolExecutor(max_workers=1)
+    busy_executor.submit(release_worker.wait)
+    queued = {"write": asyncio.Event(), "close": asyncio.Event()}
     to_thread = asyncio.to_thread
 
-    async def slow_to_thread(func, /, *args, **kwargs):
-        if getattr(func, "__name__", None) != "close":
+    async def busy_to_thread(func, /, *args, **kwargs):
+        name = getattr(func, "__name__", None)
+        if name not in queued:
             return await to_thread(func, *args, **kwargs)
-        # The close goes on in its thread when the waiting task is cancelled
-        closed = asyncio.ensure_future(to_thread(func, *args, **kwargs))
-        closing.set()
-        await asyncio.sleep(0.5)
-        return await closed
+        future = asyncio.get_running_loop().run_in_executor(
+            busy_executor, partial(func, *args, **kwargs)
+        )
+        queued[name].set()
+        return await future
 
-    monkeypatch.setattr(asyncio, "to_thread", slow_to_thread)
+    monkeypatch.setattr(asyncio, "to_thread", busy_to_thread)
 
     async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         await reader.readline()
@@ -281,25 +300,30 @@ async def test_received_file_is_removed_when_subscription_is_cancelled_while_clo
         await writer.wait_closed()
 
     server = await asyncio.start_server(handle_connection, HOST, PORT)
-    received: list[str] = []
 
     try:
         client = FileTransmitClient(HOST, PORT)
         subscribe_task = asyncio.create_task(
-            client.subscribe("foobar", lambda filename, metadata: received.append(filename))
+            client.subscribe("foobar", lambda filename, metadata: True)
         )
-        await asyncio.wait_for(closing.wait(), timeout=5)
+        await asyncio.wait_for(queued["write"].wait(), timeout=5)
 
-        # Act
+        # Act: cancel while the write waits, and again while the subscription cleans up
+        subscribe_task.cancel()
+        close_wait = asyncio.create_task(queued["close"].wait())
+        await asyncio.wait({close_wait, subscribe_task}, timeout=5, return_when="FIRST_COMPLETED")
+        close_wait.cancel()
         subscribe_task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await subscribe_task
     finally:
+        release_worker.set()
+        busy_executor.shutdown(wait=True)
         server.close()
         await server.wait_closed()
 
-    # Assert: the complete file never reached the handler, so it must not be left behind
-    assert received == []
+    # Assert: neither the file handle nor the file (it may contain patient data) is left
+    assert opened and all(file.closed for file in opened)
     assert list(tmp_path.iterdir()) == []
 
 
