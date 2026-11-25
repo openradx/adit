@@ -338,7 +338,14 @@ class DimseConnector:
 
         responses = self.assoc.send_c_get(query.dataset, query_model, msg_id)
 
-        self._handle_get_and_move_responses(responses, "C-GET")
+        try:
+            self._handle_get_and_move_responses(responses, "C-GET")
+        except AssociationLostError:
+            # The store handler aborts the association when it can't handle an image. Its
+            # error is the cause then, and a retry would only fetch the same images again.
+            if store_errors:
+                raise store_errors[0]
+            raise
 
     @retry_dimse_retrieve
     @connect_to_server("C-MOVE")
