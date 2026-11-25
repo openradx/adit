@@ -598,6 +598,13 @@ ANONYMIZATION_SEED = env.str("ANONYMIZATION_SEED", default="")
 if not ANONYMIZATION_SEED:
     raise ImproperlyConfigured("ANONYMIZATION_SEED must be set")
 
+# Secret salt that makes pseudonymization with a user provided pseudonym (selective and
+# batch transfer, direct download, DICOMweb) repeatable: the same pseudonym then always
+# leads to the same replaced UIDs and the same date shift. If empty, those differ in every
+# task and request.
+# Cave, changing the salt breaks the link to everything pseudonymized with the old one!
+PSEUDONYMIZATION_SALT = env.str("PSEUDONYMIZATION_SALT", default="")
+
 # DICOM tags to extract from the first instance in a series and merge into the
 # dcm2niix JSON sidecar during NIfTI conversion.
 DICOM_METADATA_TAGS = [

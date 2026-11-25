@@ -2,8 +2,10 @@ import asyncio
 
 import pytest
 from pydicom import Dataset
+from pydicom.dataset import FileMetaDataset
 
 from adit.core.errors import DicomError, RetriableDicomError
+from adit.core.models import DicomServer
 from adit.dicom_web.errors import BadGatewayApiError, ServiceUnavailableApiError
 from adit.dicom_web.utils import wadors_utils
 
@@ -65,6 +67,9 @@ async def test_wado_retrieve_integration(monkeypatch):
     manipulator_calls: list[Dataset] = []
 
     class FakeDicomManipulator:
+        def __init__(self, pseudonymizer) -> None:
+            pass
+
         def manipulate(
             self,
             ds: Dataset,
@@ -140,6 +145,9 @@ async def test_wado_retrieve_with_retriable_error(monkeypatch):
             raise RetriableDicomError("Connection failed")
 
     class FakeDicomManipulator:
+        def __init__(self, pseudonymizer) -> None:
+            pass
+
         def manipulate(self, *args, **kwargs):
             return None
 
@@ -212,6 +220,9 @@ async def test_wado_retrieve_with_non_retriable_error(monkeypatch):
             raise DicomError("Permanent failure")
 
     class FakeDicomManipulator:
+        def __init__(self, pseudonymizer) -> None:
+            pass
+
         def manipulate(self, *args, **kwargs):
             return None
 
@@ -247,6 +258,48 @@ async def test_wado_retrieve_with_non_retriable_error(monkeypatch):
         await consume()
 
     assert "Permanent failure" in str(err.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("salt", "same_uids"), [("my-salt", True), ("", False)])
+async def test_wado_retrieve_pseudonymizes_alike_only_with_salt(
+    monkeypatch, settings, salt: str, same_uids: bool
+):
+    settings.PSEUDONYMIZATION_SALT = salt
+
+    class FakeDicomOperator:
+        def __init__(self, server):
+            pass
+
+        def fetch_study(self, *, patient_id: str, study_uid: str, callback):
+            ds = Dataset()
+            ds.StudyInstanceUID = study_uid
+            ds.SeriesInstanceUID = "1.2.3.4.5"
+            ds.SOPInstanceUID = "1.2.3.4.5.6"
+            ds.file_meta = FileMetaDataset()
+            callback(ds)
+
+    monkeypatch.setattr(wadors_utils, "DicomOperator", FakeDicomOperator)
+
+    async def retrieve(pseudonym: str) -> Dataset:
+        query = {"PatientID": "P123", "StudyInstanceUID": "1.2.3.4"}
+        retrieved = [
+            ds
+            async for ds in wadors_utils.wado_retrieve(
+                DicomServer(), query, "STUDY", pseudonym=pseudonym
+            )
+        ]
+        return retrieved[0]
+
+    first = await retrieve("PSEUDO1")
+    second = await retrieve("PSEUDO1")
+    other = await retrieve("PSEUDO2")
+
+    assert first.StudyInstanceUID != "1.2.3.4"
+    assert (first.StudyInstanceUID == second.StudyInstanceUID) is same_uids
+    assert (first.SeriesInstanceUID == second.SeriesInstanceUID) is same_uids
+    assert (first.SOPInstanceUID == second.SOPInstanceUID) is same_uids
+    assert first.StudyInstanceUID != other.StudyInstanceUID
 
 
 """

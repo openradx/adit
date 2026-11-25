@@ -1,3 +1,5 @@
+import asyncio
+from datetime import date, time
 from functools import partial
 
 import pytest
@@ -10,10 +12,12 @@ from asgiref.sync import async_to_sync
 from django.db import close_old_connections, connections
 from django.test.client import AsyncRequestFactory
 from pydicom import Dataset
+from pydicom.dataset import FileMetaDataset
 from pytest_mock import MockerFixture
 from rest_framework.exceptions import NotFound
 
 from adit.core.factories import DicomServerFactory
+from adit.core.types import StudyParams
 from adit.core.utils.auth_utils import grant_access
 from adit.core.utils.dicom_dataset import ResultDataset
 from adit.selective_transfer.utils.dicom_downloader import DicomDownloader
@@ -195,3 +199,46 @@ def test_fetch_put_study_fetches_whole_study_without_pseudonym(
     operator_mock.fetch_study.assert_called_once()
     operator_mock.find_series.assert_not_called()
     operator_mock.fetch_series.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("salt", "same_uids"), [("my-salt", True), ("", False)])
+async def test_retrieve_study_pseudonymizes_alike_only_with_salt(
+    mocker: MockerFixture, settings, salt: str, same_uids: bool
+):
+    settings.PSEUDONYMIZATION_SALT = salt
+    study_params: StudyParams = {
+        "study_date": date(2019, 9, 23),
+        "study_time": time(8, 0),
+        "study_modalities": ["CT"],
+        "pseudonym": "PSEUDO1",
+        "trial_protocol_id": None,
+        "trial_protocol_name": None,
+    }
+
+    async def download() -> Dataset:
+        downloader = DicomDownloader(server_id="1")
+        fetch_put_study = mocker.patch.object(downloader, "_fetch_put_study")
+        await downloader.retrieve_study(
+            user=mocker.MagicMock(),
+            patient_id="1001",
+            study_uid="1.2.3.4",
+            study_params=study_params,
+        )
+        await asyncio.gather(*downloader._tasks)
+
+        ds = Dataset()
+        ds.StudyInstanceUID = "1.2.3.4"
+        ds.SeriesInstanceUID = "1.2.3.4.5"
+        ds.SOPInstanceUID = "1.2.3.4.5.6"
+        ds.file_meta = FileMetaDataset()
+        fetch_put_study.call_args.kwargs["modifier"](ds)
+        return ds
+
+    first = await download()
+    second = await download()
+
+    assert first.StudyInstanceUID != "1.2.3.4"
+    assert (first.StudyInstanceUID == second.StudyInstanceUID) is same_uids
+    assert (first.SeriesInstanceUID == second.SeriesInstanceUID) is same_uids
+    assert (first.SOPInstanceUID == second.SOPInstanceUID) is same_uids

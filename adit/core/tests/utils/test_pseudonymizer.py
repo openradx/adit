@@ -3,7 +3,7 @@ from pydicom import Dataset
 from pydicom.dataset import FileMetaDataset
 from pydicom.uid import UID
 
-from adit.core.utils.pseudonymizer import Pseudonymizer, compute_pseudonym
+from adit.core.utils.pseudonymizer import Pseudonymizer, compute_pseudonym, compute_seed
 
 
 @pytest.fixture
@@ -178,6 +178,92 @@ class TestComputePseudonym:
         """Pseudonyms must not change across code updates (breaks cross-transfer linking)."""
         assert compute_pseudonym("my-salt", "PAT1", 12) == "81T9LZGKTAM3"
         assert compute_pseudonym("my-salt", "PAT1", 14) == "81T9LZGKTAM3UV"
+
+
+class TestComputeSeed:
+    def test_no_seed_without_salt(self, settings):
+        settings.PSEUDONYMIZATION_SALT = ""
+        assert compute_seed("PSEUDO1") is None
+
+    def test_no_seed_without_pseudonym(self, settings):
+        settings.PSEUDONYMIZATION_SALT = "my-salt"
+        assert compute_seed(None) is None
+        assert compute_seed("") is None
+
+    def test_same_pseudonym_gets_same_seed(self, settings):
+        settings.PSEUDONYMIZATION_SALT = "my-salt"
+        assert compute_seed("PSEUDO1") == compute_seed("PSEUDO1")
+
+    def test_different_pseudonyms_get_different_seeds(self, settings):
+        settings.PSEUDONYMIZATION_SALT = "my-salt"
+        assert compute_seed("PSEUDO1") != compute_seed("PSEUDO2")
+
+    def test_different_salts_give_different_seeds(self, settings):
+        settings.PSEUDONYMIZATION_SALT = "salt-a"
+        seed_a = compute_seed("PSEUDO1")
+        settings.PSEUDONYMIZATION_SALT = "salt-b"
+        assert compute_seed("PSEUDO1") != seed_a
+
+    def test_stable_output(self, settings):
+        """Seeds must not change across code updates (breaks linking with earlier transfers)."""
+        settings.PSEUDONYMIZATION_SALT = "my-salt"
+        assert (
+            compute_seed("PSEUDO1")
+            == "612242990613eece25a66b942cfa29419d73b63432962b4222279b0c2332432b"
+        )
+
+
+class TestSeededPseudonymization:
+    """Each transfer task and DICOMweb request creates its own Pseudonymizer, so the
+    seed alone has to make their results match."""
+
+    def _pseudonymize(self, pseudonym: str, study_uid: str = "1.2.3.4.5") -> Dataset:
+        ds = create_base_dataset()
+        ds.StudyInstanceUID = study_uid
+        ds.FrameOfReferenceUID = "1.2.3.4.9"
+        ds.PatientBirthDate = "19800101"
+        Pseudonymizer(seed=compute_seed(pseudonym)).pseudonymize(ds, pseudonym)
+        return ds
+
+    def test_same_pseudonym_gets_same_uids(self, settings):
+        settings.PSEUDONYMIZATION_SALT = "my-salt"
+
+        first = self._pseudonymize("PSEUDO1")
+        second = self._pseudonymize("PSEUDO1")
+
+        assert first.StudyInstanceUID == second.StudyInstanceUID
+        assert first.SeriesInstanceUID == second.SeriesInstanceUID
+        assert first.SOPInstanceUID == second.SOPInstanceUID
+        assert first.file_meta.MediaStorageSOPInstanceUID == second.SOPInstanceUID
+
+    def test_studies_of_same_pseudonym_are_consistent(self, settings):
+        settings.PSEUDONYMIZATION_SALT = "my-salt"
+
+        first = self._pseudonymize("PSEUDO1", study_uid="1.2.3.4.5")
+        second = self._pseudonymize("PSEUDO1", study_uid="1.2.3.4.8")
+
+        assert first.StudyInstanceUID != second.StudyInstanceUID
+        assert first.FrameOfReferenceUID == second.FrameOfReferenceUID
+        assert first.PatientBirthDate == second.PatientBirthDate
+        assert first.PatientBirthDate != "19800101"
+
+    def test_different_pseudonyms_get_different_uids(self, settings):
+        settings.PSEUDONYMIZATION_SALT = "my-salt"
+
+        first = self._pseudonymize("PSEUDO1")
+        second = self._pseudonymize("PSEUDO2")
+
+        assert first.StudyInstanceUID != second.StudyInstanceUID
+        assert first.SeriesInstanceUID != second.SeriesInstanceUID
+        assert first.SOPInstanceUID != second.SOPInstanceUID
+
+    def test_without_salt_every_pseudonymizer_differs(self, settings):
+        settings.PSEUDONYMIZATION_SALT = ""
+
+        first = self._pseudonymize("PSEUDO1")
+        second = self._pseudonymize("PSEUDO1")
+
+        assert first.StudyInstanceUID != second.StudyInstanceUID
 
 
 class TestPseudonymizePersonNameEdgeCases:

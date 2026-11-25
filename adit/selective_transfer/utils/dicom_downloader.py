@@ -24,6 +24,7 @@ from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import construct_download_file_path, write_dataset
+from adit.core.utils.pseudonymizer import Pseudonymizer, compute_seed
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,6 @@ logger = logging.getLogger(__name__)
 class DicomDownloader:
     def __init__(self, server_id: str):
         self.server_id = server_id
-        self.manipulator = DicomManipulator()
         self.queue = asyncio.Queue[Dataset | None](maxsize=1000)
         self._first_put_lock = threading.Lock()
         self._has_put_once = False
@@ -103,8 +103,9 @@ class DicomDownloader:
         """Retrieves the study for download"""
 
         loop = asyncio.get_running_loop()
+        pseudonymizer = Pseudonymizer(seed=compute_seed(study_params["pseudonym"]))
         modifier = partial(
-            self.manipulator.manipulate,
+            DicomManipulator(pseudonymizer).manipulate,
             pseudonym=study_params["pseudonym"],
             trial_protocol_id=study_params["trial_protocol_id"],
             trial_protocol_name=study_params["trial_protocol_name"],
